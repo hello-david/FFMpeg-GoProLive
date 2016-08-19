@@ -7,7 +7,6 @@
 //
 
 #import "GPFFMpegTool.h"
-
 @implementation GPFFMpegTool
 
 #pragma mark--------------------------ffmpeg setting--------------------------------------
@@ -17,7 +16,7 @@ void init_ffmpeg()
     avformat_network_init();
 }
 
-int open_decoder(AVCodecContext **codec_ctx,AVFormatContext *in_fmt_ctx)
+int open_input_video_decoder(AVCodecContext **codec_ctx,AVFormatContext *in_fmt_ctx)
 {
     int ret,video_index = 0;
     //find input stream codec
@@ -130,7 +129,7 @@ int open_input_ctx_mpegts(AVFormatContext **ifmt_ctx,const char* in_filename)
     return 0;
 }
 
-int open_output_ctx_rtmp(AVFormatContext **out_fmt_ctx,AVFormatContext *ifmt_ctx,const char* out_filename)
+int open_output_ctx_rtmp(AVFormatContext **out_fmt_ctx,AVFormatContext *ifmt_ctx,const char* out_filename,bool use_phone_mic)
 {
     int ret = 0;
     
@@ -149,7 +148,13 @@ int open_output_ctx_rtmp(AVFormatContext **out_fmt_ctx,AVFormatContext *ifmt_ctx
         AVCodec *codec = avcodec_find_decoder(in_stream->codecpar->codec_id);
         AVCodecParameters *para = in_stream->codecpar;
         
-        if((para->codec_type == AVMEDIA_TYPE_VIDEO || para->codec_type == AVMEDIA_TYPE_AUDIO) && para->extradata_size > 0)
+        bool media;
+        if(use_phone_mic)
+            (para->codec_type == AVMEDIA_TYPE_VIDEO) ? (media = YES):(media = NO);
+        else
+            ((para->codec_type == AVMEDIA_TYPE_VIDEO || para->codec_type == AVMEDIA_TYPE_AUDIO)) ? (media = YES):(media = NO);
+        
+        if(media && para->extradata_size > 0)
         {
             //new for output format context
             AVStream *out_stream = avformat_new_stream(*out_fmt_ctx,codec);
@@ -165,10 +170,13 @@ int open_output_ctx_rtmp(AVFormatContext **out_fmt_ctx,AVFormatContext *ifmt_ctx
                 printf( "Failed to copy context from input to output stream codec context\n");
                 return ret;
             }
-            
             out_stream->codecpar->codec_tag = 0;
         }
     }
+    
+    if(use_phone_mic)
+        add_aac_phone_audio_stream(out_fmt_ctx, out_filename);
+    
     av_dump_format(*out_fmt_ctx, 0, out_filename, 1);
     
     //open output file with format
@@ -269,6 +277,46 @@ int decode_async(AVCodecContext *avctx, AVPacket *pkt, process_frame_cb cb, void
     return ret;
 }
 
+int add_aac_phone_audio_stream(AVFormatContext **context,const char* out_filename)
+{
+    AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_AAC);
+    AVCodecContext *codec_ctx = avcodec_alloc_context3(codec);
+    if (!codec){
+        printf("Could not find encoder for '%s'\n",avcodec_get_name(AV_CODEC_ID_AAC));
+    }
+    
+    AVStream *stream = avformat_new_stream(*context, codec);
+    if (!stream){
+        printf("Could not allocate stream\n");
+    }
+    
+    stream->id = (*context)->nb_streams -1;
+    avcodec_parameters_to_context(codec_ctx, stream->codecpar);
+    switch (codec->type)
+    {
+        case AVMEDIA_TYPE_AUDIO:
+            codec_ctx->codec_id     = AV_CODEC_ID_AAC;
+            codec_ctx->codec_type   = AVMEDIA_TYPE_AUDIO;
+            codec_ctx->sample_fmt   = codec->sample_fmts ? codec->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
+            codec_ctx->bit_rate     = 128033;
+            codec_ctx->sample_rate  = 44100;
+            codec_ctx->channel_layout = AV_CH_LAYOUT_STEREO;
+            codec_ctx->channels     = av_get_channel_layout_nb_channels(codec_ctx->channel_layout);
+            stream->time_base       = (AVRational){ 1,codec_ctx->sample_rate};
+            break;
+        default:
+            break;
+    }
+    avcodec_parameters_from_context(stream->codecpar, codec_ctx);
+    
+    /* Some formats want stream headers to be separate. */
+    if ((*context)->oformat->flags & AVFMT_GLOBALHEADER)
+        codec_ctx->flags |= CODEC_FLAG_GLOBAL_HEADER;
+    
+    av_dump_format(*context, 0, out_filename, 1);
+    return 0;
+}
+
 #pragma mark ------------------------trans frame to image----------------------------------------
 + (UIImage*)converFrameToImage:(AVFrame *)avFrame pixFormat:(int)pixFormat
 {
@@ -337,6 +385,101 @@ int decode_async(AVCodecContext *avctx, AVPacket *pkt, process_frame_cb cb, void
     av_frame_free(&rgbPicture);
     
     return image;
+}
+
++ (AVPacket *)encodeToAAC:(CMSampleBufferRef)sampleBuffer outputContext:(AVFormatContext *)context
+{
+    CMSampleTimingInfo timing_info;
+    CMSampleBufferGetSampleTimingInfo(sampleBuffer, 0, &timing_info);
+    double  pts=0;
+    double  dts=0;
+    AVCodecContext *c;
+    int got_packet, ret;
+    c = audio_st->codec;
+    CMItemCount numSamples = CMSampleBufferGetNumSamples(sampleBuffer);
+    
+    NSUInteger channelIndex = 0;
+    
+    //get pcm data
+    CMBlockBufferRef audioBlockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer);
+    size_t audioBlockBufferOffset = (channelIndex * numSamples * sizeof(SInt16));
+    size_t lengthAtOffset = 0;
+    size_t totalLength = 0;
+    SInt16 *samples = NULL;
+    CMBlockBufferGetDataPointer(audioBlockBuffer, audioBlockBufferOffset, &lengthAtOffset, &totalLength, (char **)(&samples));
+    
+    const AudioStreamBasicDescription *audioDescription = CMAudioFormatDescriptionGetStreamBasicDescription(CMSampleBufferGetFormatDescription(sampleBuffer));
+    
+    SwrContext *swr = swr_alloc();
+    int in_smprt = (int)audioDescription->mSampleRate;
+    av_opt_set_int(swr, "in_channel_layout",  AV_CH_LAYOUT_MONO, 0);
+    av_opt_set_int(swr, "in_channel_count",   audioDescription->mChannelsPerFrame,  0);
+    av_opt_set_int(swr, "in_sample_rate",     audioDescription->mSampleRate,0);
+    av_opt_set_sample_fmt(swr, "in_sample_fmt",  AV_SAMPLE_FMT_S16, 0);
+    
+    av_opt_set_int(swr, "out_channel_layout", audio_st->codec->channel_layout,  0);
+    av_opt_set_int(swr, "out_channel_count", 1,  0);
+    av_opt_set_int(swr, "out_channel_layout", audio_st->codec->channel_layout,  0);
+    av_opt_set_int(swr, "out_sample_rate",    audio_st->codec->sample_rate,0);
+    av_opt_set_sample_fmt(swr, "out_sample_fmt", audio_st->codec->sample_fmt,  0);
+    swr_init(swr);
+    
+    uint8_t **input = NULL;
+    int src_linesize;
+    int in_samples = (int)numSamples;
+    ret = av_samples_alloc_array_and_samples(&input, &src_linesize, audioDescription->mChannelsPerFrame, in_samples, AV_SAMPLE_FMT_S16P, 0);
+    
+    *input=(uint8_t*)samples;
+    uint8_t *output=NULL;
+    
+    int out_samples = av_rescale_rnd(swr_get_delay(swr, in_smprt) +in_samples, (int)audio_st->codec->sample_rate, in_smprt, AV_ROUND_UP);
+    
+    av_samples_alloc(&output, NULL, audio_st->codec->channels, out_samples, audio_st->codec->sample_fmt, 0);
+    in_samples = (int)numSamples;
+    out_samples = swr_convert(swr, &output, out_samples, (const uint8_t **)input, in_samples);
+    
+    aFrame->nb_samples =(int) out_samples;
+    
+    ret = avcodec_fill_audio_frame(aFrame, audio_st->codec->channels, audio_st->codec->sample_fmt,
+                                   (uint8_t *)output,
+                                   (int) out_samples *
+                                   av_get_bytes_per_sample(audio_st->codec->sample_fmt) *
+                                   audio_st->codec->channels, 1);
+    if (ret < 0)
+    {
+        fprintf(stderr, "Error fill audio frame: %s\n", av_err2str(ret));
+    }
+    aFrame->channel_layout = audio_st->codec->channel_layout;
+    aFrame->channels=audio_st->codec->channels;
+    aFrame->sample_rate= audio_st->codec->sample_rate;
+    
+    if (timing_info.presentationTimeStamp.timescale!=0)
+        pts=(double) timing_info.presentationTimeStamp.value/timing_info.presentationTimeStamp.timescale;
+    
+    
+    aFrame->pts = pts*audio_st->time_base.den;
+    aFrame->pts = av_rescale_q(aFrame->pts, audio_st->time_base, audio_st->codec->time_base);
+    
+    ret = avcodec_encode_audio2(c, &pkt2, aFrame, &got_packet);
+    
+    if (ret < 0)
+    {
+        fprintf(stderr, "Error encoding audio frame: %s\n", av_err2str(ret));
+    }
+    swr_free(&swr);
+    
+    if (got_packet)
+    {
+        pkt2.stream_index = audio_st->index;
+        
+        // Write the compressed frame to the media file.
+        ret = av_interleaved_write_frame(pFormatCtx, &pkt2);
+        if (ret != 0)
+        {
+            fprintf(stderr, "Error while writing audio frame: %s\n", av_err2str(ret));
+            av_free_packet(&pkt2);
+        }
+    }
 }
 
 @end

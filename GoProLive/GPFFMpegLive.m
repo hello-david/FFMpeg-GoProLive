@@ -24,7 +24,6 @@
     return self;
 }
 
-
 - (void)stopLive
 {
     if(!_pushThread.finished)
@@ -60,11 +59,11 @@
     else
         sprintf(out_filename,"%s","rtmp://52.68.136.211:1935/live/ffmpegTest");
     
-    char input_str_full[500]={0};
-    NSString *input_str= [NSString stringWithFormat:@"resource.bundle/%@",@"war3end.mp4"];
-    NSString *input_nsstr=[[[NSBundle mainBundle]resourcePath] stringByAppendingPathComponent:input_str];
-    sprintf(input_str_full,"%s",[input_nsstr UTF8String]);
-    strcpy(in_filename,input_str_full);
+//    char input_str_full[500]={0};
+//    NSString *input_str= [NSString stringWithFormat:@"resource.bundle/%@",@"war3end.mp4"];
+//    NSString *input_nsstr=[[[NSBundle mainBundle]resourcePath] stringByAppendingPathComponent:input_str];
+//    sprintf(input_str_full,"%s",[input_nsstr UTF8String]);
+//    strcpy(in_filename,input_str_full);
     
     printf("Input Path:%s\n",in_filename);
     printf("Output Path:%s\n",out_filename);
@@ -77,20 +76,20 @@
     
     //input setting
     dispatch_async(dispatch_get_main_queue(), ^{
-        [[FRHudManager defaultManager]showLoadingWithText:@"Waiting For Live Stream"];
+        [[FRHudManager defaultManager] showLoadingWithText:@"Waiting For Live Stream"];
     });
     
     AVFormatContext *in_fmt_ctx = NULL;
     AVCodecContext	*h264decoder_ctx = NULL;
     AVFormatContext *out_fmt_ctx = NULL;
 
-//    if((ret = open_input_ctx_mpegts(&in_fmt_ctx,in_filename)) < 0)
-//        goto end;
-    if((ret = open_input_ctx(&in_fmt_ctx,in_filename)) < 0)
+    if((ret = open_input_ctx_mpegts(&in_fmt_ctx,in_filename)) < 0)
         goto end;
-    
+//    if((ret = open_input_ctx(&in_fmt_ctx,in_filename)) < 0)
+//        goto end;
+//    
     //output setting
-    if((ret = open_output_ctx_rtmp(&out_fmt_ctx,in_fmt_ctx,out_filename) < 0))
+    if((ret = open_output_ctx_rtmp(&out_fmt_ctx,in_fmt_ctx,out_filename,YES) < 0))
        goto end;
     
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -101,7 +100,7 @@
     
     //open an decoder
     int in_stream_video_index = -1;
-    if((in_stream_video_index = open_decoder(&h264decoder_ctx, in_fmt_ctx)) < 0)
+    if((in_stream_video_index = open_input_video_decoder(&h264decoder_ctx, in_fmt_ctx)) < 0)
         goto end;
    
     //frame handle

@@ -72,9 +72,10 @@ didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer
        fromConnection:(AVCaptureConnection *)connection
 {
     if(connection == _audioConnection){
-        [_aacEncoder encodeSampleBuffer:sampleBuffer completionBlock:^(NSData *encodedData, NSError *error) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"aacAudio" object:encodedData];
-        }];
+//        [_aacEncoder encodeSampleBuffer:sampleBuffer completionBlock:^(NSData *encodedData, NSError *error) {
+//            [[NSNotificationCenter defaultCenter] postNotificationName:@"aacAudio" object:encodedData];
+//        }];
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"aacAudio" object:(__bridge id _Nullable)(sampleBuffer)];
     }
 }
 @end
