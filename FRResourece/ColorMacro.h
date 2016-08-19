@@ -1,9 +1,8 @@
 //
 //  ColorMacro.h
-//  FrontRow
 //
 //  Created by Jose Chen on 16/3/29.
-//  Copyright © 2016年 UBNT. All rights reserved.
+//  Copyright © 2016年 Jose Chen. All rights reserved.
 //
 
 //通用颜色宏

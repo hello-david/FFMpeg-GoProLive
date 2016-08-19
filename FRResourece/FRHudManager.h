@@ -1,9 +1,8 @@
 //
 //  FRHudManager.h
-//  FrontRow
 //
 //  Created by Jose Chen on 16/4/21.
-//  Copyright © 2016年 UBNT. All rights reserved.
+//  Copyright © 2016年 Jose Chen. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>

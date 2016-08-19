@@ -1,9 +1,8 @@
 //
 //  FRMBPregressHUD.m
-//  FrontRow
 //
 //  Created by Jose Chen on 16/4/8.
-//  Copyright © 2016年 UBNT. All rights reserved.
+//  Copyright © 2016年 Jose Chen. All rights reserved.
 //
 
 #import "FRMBPregressHUD.h"

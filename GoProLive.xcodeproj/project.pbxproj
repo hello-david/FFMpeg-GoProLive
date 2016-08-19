@@ -16,6 +16,7 @@
 		630475C51D62F42F008F4EFF /* libpostproc.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 630475BD1D62F42F008F4EFF /* libpostproc.a */; };
 		630475C61D62F42F008F4EFF /* libswresample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 630475BE1D62F42F008F4EFF /* libswresample.a */; };
 		630475C71D62F42F008F4EFF /* libswscale.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 630475BF1D62F42F008F4EFF /* libswscale.a */; };
+		634261BC1D66B5DB00A0D17A /* GPFFMpegTool.m in Sources */ = {isa = PBXBuildFile; fileRef = 634261BB1D66B5DB00A0D17A /* GPFFMpegTool.m */; };
 		6362005A1D62B7F8001FF309 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 636200591D62B7F8001FF309 /* AudioToolbox.framework */; };
 		6362005D1D62BC7A001FF309 /* GPAudioLive.m in Sources */ = {isa = PBXBuildFile; fileRef = 6362005C1D62BC7A001FF309 /* GPAudioLive.m */; };
 		636495F51D49AC64005982C7 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 636494D71D4996E1005982C7 /* libz.tbd */; };
@@ -172,6 +173,8 @@
 		630475BD1D62F42F008F4EFF /* libpostproc.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libpostproc.a; sourceTree = "<group>"; };
 		630475BE1D62F42F008F4EFF /* libswresample.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libswresample.a; sourceTree = "<group>"; };
 		630475BF1D62F42F008F4EFF /* libswscale.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libswscale.a; sourceTree = "<group>"; };
+		634261BA1D66B5DB00A0D17A /* GPFFMpegTool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GPFFMpegTool.h; sourceTree = "<group>"; };
+		634261BB1D66B5DB00A0D17A /* GPFFMpegTool.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GPFFMpegTool.m; sourceTree = "<group>"; };
 		636200591D62B7F8001FF309 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		6362005B1D62BC7A001FF309 /* GPAudioLive.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GPAudioLive.h; sourceTree = "<group>"; };
 		6362005C1D62BC7A001FF309 /* GPAudioLive.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GPAudioLive.m; sourceTree = "<group>"; };
@@ -479,6 +482,8 @@
 				6362005C1D62BC7A001FF309 /* GPAudioLive.m */,
 				630474301D62C373008F4EFF /* AACEncoder.h */,
 				630474311D62C373008F4EFF /* AACEncoder.m */,
+				634261BA1D66B5DB00A0D17A /* GPFFMpegTool.h */,
+				634261BB1D66B5DB00A0D17A /* GPFFMpegTool.m */,
 			);
 			name = Model;
 			sourceTree = "<group>";
@@ -764,6 +769,7 @@
 				63AF67FB1D50433600FCB181 /* FRMBPregressHUD.m in Sources */,
 				637706EB1CF2FE36009A990F /* AppDelegate.m in Sources */,
 				637706E81CF2FE36009A990F /* main.m in Sources */,
+				634261BC1D66B5DB00A0D17A /* GPFFMpegTool.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -921,8 +927,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/GoProLive/FFmpeg-iOS/lib",
-					"$(PROJECT_DIR)/GoProLive/x264-iOS/lib",
-					"$(PROJECT_DIR)/FFmpeg-iOS/lib",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.UBNT.GoProLive;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -946,8 +950,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/GoProLive/FFmpeg-iOS/lib",
-					"$(PROJECT_DIR)/GoProLive/x264-iOS/lib",
-					"$(PROJECT_DIR)/FFmpeg-iOS/lib",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.UBNT.GoProLive;
 				PRODUCT_NAME = "$(TARGET_NAME)";

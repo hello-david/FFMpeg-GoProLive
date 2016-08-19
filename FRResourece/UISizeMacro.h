@@ -1,9 +1,8 @@
 //
 //  UISizeMacro.h
-//  FrontRow
 //
 //  Created by David.Dai on 16/3/31.
-//  Copyright © 2016年 UBNT. All rights reserved.
+//  Copyright © 2016年 David.Dai. All rights reserved.
 //
 
 #ifndef UISizeMacro_h
