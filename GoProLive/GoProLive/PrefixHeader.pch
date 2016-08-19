@@ -1,0 +1,18 @@
+//
+//  PrefixHeader.pch
+//  GoProLive
+//
+//  Created by David.Dai on 16/8/2.
+//  Copyright © 2016年 David.Dai. All rights reserved.
+//
+
+#ifndef PrefixHeader_pch
+#define PrefixHeader_pch
+#import "Masonry.h"
+#import "FRHudManager.h"
+#import "ColorMacro.h"
+#import "UISizeMacro.h"
+#define kGoProHackKeepAlive     @"kGPStartKeepAliveNotification"
+#define kGoProHackStopAlvie     @"kGPStopKeepAliveNotification"
+#define kGoProReflashImage      @"kGPReflashImageNotification"
+#endif /* PrefixHeader_pch */

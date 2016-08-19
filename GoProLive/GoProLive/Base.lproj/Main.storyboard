@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="10117" systemVersion="15G31" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" initialViewController="BYZ-38-t0r">
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="10085"/>
+        <capability name="Constraints to layout margins" minToolsVersion="6.0"/>
+    </dependencies>
+    <scenes>
+        <!--View Controller-->
+        <scene sceneID="tne-QT-ifu">
+            <objects>
+                <viewController id="BYZ-38-t0r" customClass="ViewController" sceneMemberID="viewController">
+                    <layoutGuides>
+                        <viewControllerLayoutGuide type="top" id="y3c-jy-aDJ"/>
+                        <viewControllerLayoutGuide type="bottom" id="wfy-db-euE"/>
+                    </layoutGuides>
+                    <view key="view" contentMode="scaleToFill" id="8bC-Xf-vdC">
+                        <rect key="frame" x="0.0" y="0.0" width="600" height="600"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <button opaque="NO" contentMode="scaleToFill" verticalHuggingPriority="251" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="V4U-C4-Rgk">
+                                <rect key="frame" x="501" y="101" width="79" height="30"/>
+                                <color key="backgroundColor" red="0.5" green="0.0" blue="0.5" alpha="1" colorSpace="calibratedRGB"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="90" id="cYT-mm-81Y"/>
+                                    <constraint firstAttribute="width" constant="79" id="sWx-3g-8R7"/>
+                                </constraints>
+                                <state key="normal" title="Stop">
+                                    <color key="titleColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                </state>
+                                <variation key="default">
+                                    <mask key="constraints">
+                                        <exclude reference="cYT-mm-81Y"/>
+                                    </mask>
+                                </variation>
+                                <connections>
+                                    <action selector="stopGoProLive:" destination="BYZ-38-t0r" eventType="touchUpInside" id="jxD-u1-kmd"/>
+                                </connections>
+                            </button>
+                            <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="BUk-Kx-tp1">
+                                <rect key="frame" x="20" y="250" width="560" height="330"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="330" id="Nkf-u1-HrD"/>
+                                </constraints>
+                            </imageView>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="gHn-rH-Drt">
+                                <rect key="frame" x="20" y="101" width="79" height="30"/>
+                                <color key="backgroundColor" red="0.5" green="0.0" blue="0.5" alpha="1" colorSpace="calibratedRGB"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="79" id="BQP-Wt-bQX"/>
+                                    <constraint firstAttribute="width" constant="79" id="O9n-qG-JeG"/>
+                                    <constraint firstAttribute="width" constant="79" id="PP0-Zd-J43"/>
+                                </constraints>
+                                <state key="normal" title="Start">
+                                    <color key="titleColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
+                                </state>
+                                <variation key="default">
+                                    <mask key="constraints">
+                                        <exclude reference="O9n-qG-JeG"/>
+                                        <exclude reference="PP0-Zd-J43"/>
+                                    </mask>
+                                </variation>
+                                <connections>
+                                    <action selector="hackGoProLiveStream:" destination="BYZ-38-t0r" eventType="touchUpInside" id="hdI-7B-75W"/>
+                                </connections>
+                            </button>
+                        </subviews>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
+                        <constraints>
+                            <constraint firstAttribute="bottom" secondItem="BUk-Kx-tp1" secondAttribute="bottom" constant="20" symbolic="YES" id="2WK-TP-bhl"/>
+                            <constraint firstItem="V4U-C4-Rgk" firstAttribute="leading" secondItem="gHn-rH-Drt" secondAttribute="trailing" constant="23" id="9NO-It-dsM"/>
+                            <constraint firstItem="gHn-rH-Drt" firstAttribute="leading" secondItem="V4U-C4-Rgk" secondAttribute="leading" id="FjS-3O-Ly9"/>
+                            <constraint firstItem="V4U-C4-Rgk" firstAttribute="trailing" secondItem="BUk-Kx-tp1" secondAttribute="trailing" id="Jdu-4N-QSr"/>
+                            <constraint firstItem="gHn-rH-Drt" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" constant="255" id="Lon-6X-9Cx"/>
+                            <constraint firstItem="gHn-rH-Drt" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leadingMargin" id="R0n-4J-dDK"/>
+                            <constraint firstItem="gHn-rH-Drt" firstAttribute="top" secondItem="y3c-jy-aDJ" secondAttribute="bottom" constant="81" id="Tto-be-3v2"/>
+                            <constraint firstItem="BUk-Kx-tp1" firstAttribute="trailing" secondItem="8bC-Xf-vdC" secondAttribute="trailingMargin" id="XKl-iz-Ztv"/>
+                            <constraint firstItem="V4U-C4-Rgk" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leading" constant="122" id="YmE-AK-7tY"/>
+                            <constraint firstItem="gHn-rH-Drt" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leadingMargin" constant="99" id="eDA-Jf-px2"/>
+                            <constraint firstItem="V4U-C4-Rgk" firstAttribute="baseline" secondItem="gHn-rH-Drt" secondAttribute="baseline" id="ec8-Ft-N5i"/>
+                            <constraint firstItem="V4U-C4-Rgk" firstAttribute="leading" secondItem="gHn-rH-Drt" secondAttribute="leading" id="mx9-Gp-1Dl"/>
+                            <constraint firstItem="gHn-rH-Drt" firstAttribute="leading" secondItem="BUk-Kx-tp1" secondAttribute="leading" id="qp0-5q-OPx"/>
+                            <constraint firstItem="gHn-rH-Drt" firstAttribute="trailing" secondItem="V4U-C4-Rgk" secondAttribute="trailing" id="qp3-zM-28M"/>
+                            <constraint firstItem="V4U-C4-Rgk" firstAttribute="leading" secondItem="8bC-Xf-vdC" secondAttribute="leadingMargin" constant="99" id="ySi-UH-QJz"/>
+                        </constraints>
+                        <variation key="default">
+                            <mask key="constraints">
+                                <exclude reference="FjS-3O-Ly9"/>
+                                <exclude reference="Lon-6X-9Cx"/>
+                                <exclude reference="eDA-Jf-px2"/>
+                                <exclude reference="qp3-zM-28M"/>
+                                <exclude reference="9NO-It-dsM"/>
+                                <exclude reference="YmE-AK-7tY"/>
+                                <exclude reference="mx9-Gp-1Dl"/>
+                                <exclude reference="ySi-UH-QJz"/>
+                            </mask>
+                        </variation>
+                    </view>
+                    <connections>
+                        <outlet property="imageView" destination="BUk-Kx-tp1" id="yHZ-WW-ipL"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="471" y="252"/>
+        </scene>
+    </scenes>
+</document>

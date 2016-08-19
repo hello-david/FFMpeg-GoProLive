@@ -1,0 +1,37 @@
+//
+//  UISizeMacro.h
+//  FrontRow
+//
+//  Created by David.Dai on 16/3/31.
+//  Copyright © 2016年 UBNT. All rights reserved.
+//
+
+#ifndef UISizeMacro_h
+#define UISizeMacro_h
+
+#define MIRROR_UINAVIGATOR_BAR_HEIGHT      0
+
+#define UINAVIGATOR_BAR_HEIGHT       44
+#define STATUS_BAR_HEIGHT            [UIApplication sharedApplication].statusBarFrame.size.height
+
+#define kScreenWidth                 [UIScreen mainScreen].bounds.size.width
+#define kScreenHeight                [UIScreen mainScreen].bounds.size.height
+
+#define kWidthScale                  [UIScreen mainScreen].bounds.size.width/375.0
+#define kHeightScale                 [UIScreen mainScreen].bounds.size.height/667.0
+
+#define IS_IPAD                     (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad)
+#define IS_IPHONE                   (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPhone)
+#define SCREEN_WIDTH                ([[UIScreen mainScreen] bounds].size.width)
+#define SCREEN_HEIGHT               ([[UIScreen mainScreen] bounds].size.height)
+#define SCREEN_MAX_LENGTH           (MAX(SCREEN_WIDTH, SCREEN_HEIGHT))
+#define SCREEN_MIN_LENGTH           (MIN(SCREEN_WIDTH, SCREEN_HEIGHT))
+#define IS_RETINA                   ([[UIScreen mainScreen] scale] >= 2.0)
+#define IS_IPHONE_4_OR_LESS         (IS_IPHONE && SCREEN_MAX_LENGTH < 568.0)
+#define IS_IPHONE_5_OR_LESS         (IS_IPHONE && SCREEN_MAX_LENGTH <= 568.0)
+#define IS_IPHONE_5                 (IS_IPHONE && SCREEN_MAX_LENGTH == 568.0)
+#define IS_IPHONE_6                 (IS_IPHONE && SCREEN_MAX_LENGTH == 667.0)
+#define IS_IPHONE_6P                (IS_IPHONE && SCREEN_MAX_LENGTH == 736.0)
+
+
+#endif /* UISizeMacro_h */
