@@ -31,6 +31,5 @@ int decode_sync             (AVCodecContext  *codec_ctx,     AVFrame *frame, int
 @interface GPFFMpegTool : NSObject
 
 + (UIImage*)converFrameToImage:(AVFrame *)avFrame pixFormat:(int)pixFormat;
-+ (AVPacket *)encodeToAAC:(CMSampleBufferRef)sampleBuffer;
-
++ (AVPacket *)encodeToAAC:(CMSampleBufferRef)sampleBuffer  context:(AVFormatContext*)contex;
 @end

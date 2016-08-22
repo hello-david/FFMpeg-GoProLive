@@ -10,9 +10,22 @@
 #import "FRHudManager.h"
 #import "GPFFMpegTool.h"
 
+typedef struct {
+    AVFormatContext *in_fmt_ctx;
+    AVCodecContext	*h264decoder_ctx;
+    AVFormatContext *out_fmt_ctx;
+}FFMpegLiveInfo;
+
+@interface GPFFMpegLive()
+
+@property(atomic) NSMutableArray *audioPacketArray;
+
+@end
+
 @implementation GPFFMpegLive
 {
     NSThread            *_pushThread;
+    FFMpegLiveInfo      _liveInfo;
 }
 
 - (instancetype)init
@@ -20,6 +33,7 @@
     if(self = [super init]){
         [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(getMicAACSound:) name:@"aacAudio" object:nil];
         _pushToServer = YES;
+        _audioPacketArray = [[NSMutableArray alloc]init];
     }
     return self;
 }
@@ -45,6 +59,14 @@
 - (void)getMicAACSound:(NSNotification *)notice
 {
     if(!notice.object)return;
+//    [_audioPacketArray addObject:notice.object];
+    AVPacket * packet = NULL;
+    if(_liveInfo.out_fmt_ctx)
+    {
+        packet = [GPFFMpegTool encodeToAAC:(__bridge CMSampleBufferRef)(notice.object) context:_liveInfo.out_fmt_ctx];
+        if(packet)
+            [_audioPacketArray addObject:CFBridgingRelease(packet)];
+    }
 }
 
 - (void)pushGoProPreview:(NSString *)serverUrl
@@ -59,11 +81,11 @@
     else
         sprintf(out_filename,"%s","rtmp://52.68.136.211:1935/live/ffmpegTest");
     
-//    char input_str_full[500]={0};
-//    NSString *input_str= [NSString stringWithFormat:@"resource.bundle/%@",@"war3end.mp4"];
-//    NSString *input_nsstr=[[[NSBundle mainBundle]resourcePath] stringByAppendingPathComponent:input_str];
-//    sprintf(input_str_full,"%s",[input_nsstr UTF8String]);
-//    strcpy(in_filename,input_str_full);
+    char input_str_full[500]={0};
+    NSString *input_str= [NSString stringWithFormat:@"resource.bundle/%@",@"war3end.mp4"];
+    NSString *input_nsstr=[[[NSBundle mainBundle]resourcePath] stringByAppendingPathComponent:input_str];
+    sprintf(input_str_full,"%s",[input_nsstr UTF8String]);
+    strcpy(in_filename,input_str_full);
     
     printf("Input Path:%s\n",in_filename);
     printf("Output Path:%s\n",out_filename);
@@ -82,12 +104,12 @@
     AVFormatContext *in_fmt_ctx = NULL;
     AVCodecContext	*h264decoder_ctx = NULL;
     AVFormatContext *out_fmt_ctx = NULL;
-
-    if((ret = open_input_ctx_mpegts(&in_fmt_ctx,in_filename)) < 0)
-        goto end;
-//    if((ret = open_input_ctx(&in_fmt_ctx,in_filename)) < 0)
+    
+//    if((ret = open_input_ctx_mpegts(&in_fmt_ctx,in_filename)) < 0)
 //        goto end;
-//    
+    if((ret = open_input_ctx(&in_fmt_ctx,in_filename)) < 0)
+        goto end;
+    
     //output setting
     if((ret = open_output_ctx_rtmp(&out_fmt_ctx,in_fmt_ctx,out_filename,YES) < 0))
        goto end;
@@ -102,7 +124,11 @@
     int in_stream_video_index = -1;
     if((in_stream_video_index = open_input_video_decoder(&h264decoder_ctx, in_fmt_ctx)) < 0)
         goto end;
-   
+    
+    _liveInfo.in_fmt_ctx = in_fmt_ctx;
+    _liveInfo.h264decoder_ctx = h264decoder_ctx;
+    _liveInfo.out_fmt_ctx = out_fmt_ctx;
+    
     //frame handle
     int64_t start_time = av_gettime();
     int frame_index=0;
