@@ -387,29 +387,30 @@ int add_aac_phone_audio_stream(AVFormatContext **context,const char* out_filenam
     return image;
 }
 
-+ (AVPacket *)encodeToAAC:(CMSampleBufferRef)sampleBuffer outputContext:(AVFormatContext *)context
++ (AVPacket *)encodeToAAC:(CMSampleBufferRef)sampleBuffer outputContext:(AVFormatContext *)context stream:(AVStream*)audioStream
 {
+    //get pcm data
+    NSUInteger channelIndex = 0;
     CMSampleTimingInfo timing_info;
     CMSampleBufferGetSampleTimingInfo(sampleBuffer, 0, &timing_info);
-    double  pts=0;
-    double  dts=0;
-    AVCodecContext *c;
-    int got_packet, ret;
-    c = audio_st->codec;
+    double  pts = 0;
+    double  dts = 0;
     CMItemCount numSamples = CMSampleBufferGetNumSamples(sampleBuffer);
-    
-    NSUInteger channelIndex = 0;
-    
-    //get pcm data
     CMBlockBufferRef audioBlockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer);
     size_t audioBlockBufferOffset = (channelIndex * numSamples * sizeof(SInt16));
     size_t lengthAtOffset = 0;
     size_t totalLength = 0;
     SInt16 *samples = NULL;
     CMBlockBufferGetDataPointer(audioBlockBuffer, audioBlockBufferOffset, &lengthAtOffset, &totalLength, (char **)(&samples));
-    
     const AudioStreamBasicDescription *audioDescription = CMAudioFormatDescriptionGetStreamBasicDescription(CMSampleBufferGetFormatDescription(sampleBuffer));
     
+    //trans format from pcm to aac
+    int got_packet, ret;
+    AVStream *audio_stream = audioStream;
+    AVCodec *codec = avcodec_find_encoder(AV_CODEC_ID_AAC);
+    AVCodecContext *codec_ctx = avcodec_alloc_context3(codec);
+    avcodec_parameters_from_context(audio_stream->codecpar, codec_ctx);
+
     SwrContext *swr = swr_alloc();
     int in_smprt = (int)audioDescription->mSampleRate;
     av_opt_set_int(swr, "in_channel_layout",  AV_CH_LAYOUT_MONO, 0);
@@ -417,69 +418,74 @@ int add_aac_phone_audio_stream(AVFormatContext **context,const char* out_filenam
     av_opt_set_int(swr, "in_sample_rate",     audioDescription->mSampleRate,0);
     av_opt_set_sample_fmt(swr, "in_sample_fmt",  AV_SAMPLE_FMT_S16, 0);
     
-    av_opt_set_int(swr, "out_channel_layout", audio_st->codec->channel_layout,  0);
+    av_opt_set_int(swr, "out_channel_layout",       codec_ctx->channel_layout,  0);
     av_opt_set_int(swr, "out_channel_count", 1,  0);
-    av_opt_set_int(swr, "out_channel_layout", audio_st->codec->channel_layout,  0);
-    av_opt_set_int(swr, "out_sample_rate",    audio_st->codec->sample_rate,0);
-    av_opt_set_sample_fmt(swr, "out_sample_fmt", audio_st->codec->sample_fmt,  0);
+    av_opt_set_int(swr, "out_channel_layout",       codec_ctx->channel_layout,  0);
+    av_opt_set_int(swr, "out_sample_rate",          codec_ctx->sample_rate,0);
+    av_opt_set_sample_fmt(swr, "out_sample_fmt",    codec_ctx->sample_fmt,  0);
     swr_init(swr);
     
     uint8_t **input = NULL;
     int src_linesize;
     int in_samples = (int)numSamples;
     ret = av_samples_alloc_array_and_samples(&input, &src_linesize, audioDescription->mChannelsPerFrame, in_samples, AV_SAMPLE_FMT_S16P, 0);
-    
     *input=(uint8_t*)samples;
     uint8_t *output=NULL;
-    
-    int out_samples = av_rescale_rnd(swr_get_delay(swr, in_smprt) +in_samples, (int)audio_st->codec->sample_rate, in_smprt, AV_ROUND_UP);
-    
-    av_samples_alloc(&output, NULL, audio_st->codec->channels, out_samples, audio_st->codec->sample_fmt, 0);
+    int out_samples = (int)av_rescale_rnd(swr_get_delay(swr, in_smprt) +in_samples, (int)codec_ctx->sample_rate, in_smprt, AV_ROUND_UP);
+    av_samples_alloc(&output, NULL, codec_ctx->channels, out_samples, codec_ctx->sample_fmt, 0);
     in_samples = (int)numSamples;
     out_samples = swr_convert(swr, &output, out_samples, (const uint8_t **)input, in_samples);
     
-    aFrame->nb_samples =(int) out_samples;
     
-    ret = avcodec_fill_audio_frame(aFrame, audio_st->codec->channels, audio_st->codec->sample_fmt,
+    
+    
+    
+    AVFrame  *aFrame = av_frame_alloc();
+    AVPacket  *packet = av_packet_alloc();
+    aFrame->nb_samples =(int) out_samples;
+    ret = avcodec_fill_audio_frame(aFrame, codec_ctx->channels, codec_ctx->sample_fmt,
                                    (uint8_t *)output,
-                                   (int) out_samples *
-                                   av_get_bytes_per_sample(audio_st->codec->sample_fmt) *
-                                   audio_st->codec->channels, 1);
-    if (ret < 0)
-    {
+                                   (int) out_samples * av_get_bytes_per_sample(codec_ctx->sample_fmt) * codec_ctx->channels,
+                                   1);
+    if (ret < 0){
         fprintf(stderr, "Error fill audio frame: %s\n", av_err2str(ret));
     }
-    aFrame->channel_layout = audio_st->codec->channel_layout;
-    aFrame->channels=audio_st->codec->channels;
-    aFrame->sample_rate= audio_st->codec->sample_rate;
+    
+    aFrame->channel_layout = codec_ctx->channel_layout;
+    aFrame->channels = codec_ctx->channels;
+    aFrame->sample_rate= codec_ctx->sample_rate;
     
     if (timing_info.presentationTimeStamp.timescale!=0)
         pts=(double) timing_info.presentationTimeStamp.value/timing_info.presentationTimeStamp.timescale;
     
-    
-    aFrame->pts = pts*audio_st->time_base.den;
-    aFrame->pts = av_rescale_q(aFrame->pts, audio_st->time_base, audio_st->codec->time_base);
-    
-    ret = avcodec_encode_audio2(c, &pkt2, aFrame, &got_packet);
+    aFrame->pts = pts * audio_stream->time_base.den;
+    aFrame->pts = av_rescale_q(aFrame->pts, audio_stream->time_base, codec_ctx->time_base);
+//    ret = avcodec_encode_audio2(codec_ctx, packet, aFrame, &got_packet);
     
     if (ret < 0)
-    {
         fprintf(stderr, "Error encoding audio frame: %s\n", av_err2str(ret));
-    }
+    
+    
     swr_free(&swr);
+    
+    
+    
+    
     
     if (got_packet)
     {
-        pkt2.stream_index = audio_st->index;
+        packet->stream_index = audio_stream->index;
         
         // Write the compressed frame to the media file.
-        ret = av_interleaved_write_frame(pFormatCtx, &pkt2);
+        ret = av_interleaved_write_frame(context, packet);
         if (ret != 0)
         {
             fprintf(stderr, "Error while writing audio frame: %s\n", av_err2str(ret));
-            av_free_packet(&pkt2);
+            av_packet_free(&packet);
         }
     }
+    
+    return packet;
 }
 
 @end
