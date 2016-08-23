@@ -7,6 +7,7 @@
 //
 
 #import "GPFFMpegTool.h"
+@import VideoToolbox;
 @implementation GPFFMpegTool
 
 #pragma mark--------------------------ffmpeg setting--------------------------------------
@@ -389,6 +390,36 @@ int encode_async(AVCodecContext *avctx, AVFrame *frame, process_packet_cb cb, vo
 }
 
 #pragma mark ------------------------trans frame to image----------------------------------------
++ (CVPixelBufferRef)converFrameToPixel:(AVFrame *)avFrame
+{
+    float width = avFrame->width;
+    float height = avFrame->height;
+    void *yuvData[3] = {avFrame->data[0], avFrame->data[1], avFrame->data[2]};
+    size_t planeWidth[3] = {width, width/2, width/2};
+    size_t planeHeight[3] = {height, height/2, height/2};
+    size_t planeBytesPerRow[3] = {avFrame->linesize[0], avFrame->linesize[1], avFrame->linesize[2]};
+    CVPixelBufferRef pixelBuffer = NULL;
+    CVReturn ret = CVPixelBufferCreateWithPlanarBytes(kCFAllocatorDefault,
+                                                      width,
+                                                      height,
+                                                      kCVPixelFormatType_420YpCbCr8PlanarFullRange,
+                                                      nil,
+                                                      width*height*1.5,
+                                                      3,
+                                                      yuvData,
+                                                      planeWidth,
+                                                      planeHeight,
+                                                      planeBytesPerRow,
+                                                      nil,
+                                                      nil, nil, &pixelBuffer);
+    if(ret != kCVReturnSuccess)
+    {
+        NSLog(@"conver frame to pixel err");
+        return NULL;
+    }
+    return pixelBuffer;
+}
+
 + (UIImage*)converFrameToImage:(AVFrame *)avFrame pixFormat:(int)pixFormat
 {
     float width = avFrame->width;
@@ -407,7 +438,7 @@ int encode_async(AVCodecContext *avctx, AVFrame *frame, process_packet_cb cb, vo
     //sws picture
     struct SwsContext * imgConvertCtx = sws_getContext(avFrame->width,
                                                        avFrame->height,
-                                                       AV_PIX_FMT_YUV420P,
+                                                       pixFormat,
                                                        width,
                                                        height,
                                                        AV_PIX_FMT_RGB24,
@@ -424,7 +455,7 @@ int encode_async(AVCodecContext *avctx, AVFrame *frame, process_packet_cb cb, vo
               rgbPicture->data,
               rgbPicture->linesize);
     sws_freeContext(imgConvertCtx);
-    
+
     //conver rgb24 to UIImage
     CGBitmapInfo bitmapInfo = kCGBitmapByteOrderDefault;
     CFDataRef data = CFDataCreate(kCFAllocatorDefault,
