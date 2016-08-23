@@ -12,7 +12,7 @@
 
 typedef struct {
     AVFormatContext *in_fmt_ctx;
-    AVCodecContext	*h264decoder_ctx;
+    AVCodecContext	*aac_encoder_ctx;
     AVFormatContext *out_fmt_ctx;
 }FFMpegLiveInfo;
 
@@ -26,6 +26,7 @@ typedef struct {
 {
     NSThread            *_pushThread;
     FFMpegLiveInfo      _liveInfo;
+    NSLock              *_audioLock;
 }
 
 - (instancetype)init
@@ -34,6 +35,7 @@ typedef struct {
         [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(getMicAACSound:) name:@"aacAudio" object:nil];
         _pushToServer = YES;
         _audioPacketArray = [[NSMutableArray alloc]init];
+        _audioLock = [[NSLock alloc]init];
     }
     return self;
 }
@@ -59,14 +61,21 @@ typedef struct {
 - (void)getMicAACSound:(NSNotification *)notice
 {
     if(!notice.object)return;
-//    [_audioPacketArray addObject:notice.object];
-    AVPacket * packet = NULL;
-    if(_liveInfo.out_fmt_ctx)
-    {
-        packet = [GPFFMpegTool encodeToAAC:(__bridge CMSampleBufferRef)(notice.object) context:_liveInfo.out_fmt_ctx];
-        if(packet)
-            [_audioPacketArray addObject:CFBridgingRelease(packet)];
-    }
+    
+    NSData *encodedData = notice.object;
+    [_audioLock lock];
+    [_audioPacketArray addObject:encodedData];
+    [_audioLock unlock];
+    
+    
+//    static int i = 0;
+//    AVPacket * packet = NULL;
+//    if(_liveInfo.out_fmt_ctx)
+//    {
+//        packet = [GPFFMpegTool encodeToAAC:(__bridge CMSampleBufferRef)(notice.object) context:_liveInfo.out_fmt_ctx frameIndex:i++];
+//        if(packet)
+//            [_audioPacketArray addObject:CFBridgingRelease(packet)];
+//    }
 }
 
 - (void)pushGoProPreview:(NSString *)serverUrl
@@ -79,7 +88,7 @@ typedef struct {
     if(serverUrl)
         sprintf(out_filename,"%s",[serverUrl UTF8String]);
     else
-        sprintf(out_filename,"%s","rtmp://52.68.136.211:1935/live/ffmpegTest");
+        sprintf(out_filename,"%s","rtmp://192.168.8.21:1935/live/ffmpegTest");
     
     char input_str_full[500]={0};
     NSString *input_str= [NSString stringWithFormat:@"resource.bundle/%@",@"war3end.mp4"];
@@ -126,12 +135,12 @@ typedef struct {
         goto end;
     
     _liveInfo.in_fmt_ctx = in_fmt_ctx;
-    _liveInfo.h264decoder_ctx = h264decoder_ctx;
     _liveInfo.out_fmt_ctx = out_fmt_ctx;
     
     //frame handle
     int64_t start_time = av_gettime();
-    int frame_index=0;
+    int video_frame_index = 0;
+    int audio_frame_index = 0;
     while (![_pushThread isCancelled])
     {
         AVPacket *packet = av_packet_alloc();
@@ -142,9 +151,9 @@ typedef struct {
         //h264 video
         if(packet->stream_index == in_stream_video_index)
         {
-            printf("frame= %d size= %dKB\n",frame_index ,packet->size);
-            reset_packet_pts_dts(in_fmt_ctx, out_fmt_ctx, packet,in_stream_video_index, frame_index, start_time);
-            frame_index++;
+            printf("frame= %d size= %dKB\n",video_frame_index ,packet->size);
+            reset_video_packet_pts_dts(in_fmt_ctx, out_fmt_ctx, packet,video_frame_index, start_time);
+            video_frame_index++;
             
             //decode
             AVFrame	*decode_frame = av_frame_alloc();
@@ -182,6 +191,7 @@ typedef struct {
         //aac audio
         else
         {
+            reset_audio_packet_pts_dts(in_fmt_ctx, out_fmt_ctx, packet);
             if(_pushToServer)
             {
                 ret = av_interleaved_write_frame(out_fmt_ctx,packet);
@@ -192,6 +202,32 @@ typedef struct {
                 }
             }
             av_packet_free(&packet);
+        }
+        
+        if(_audioPacketArray.count)
+        {
+            [_audioLock lock];
+            for(NSData *encodedData in _audioPacketArray)
+            {
+                uint8_t *data = malloc(encodedData.length);
+                memcpy(data, [encodedData bytes], encodedData.length);
+                AVPacket *pack = av_packet_alloc();
+                av_packet_from_data(pack, data, (int)encodedData.length);
+                reset_audio_packet_pts_dts(_liveInfo.in_fmt_ctx, _liveInfo.out_fmt_ctx, pack);
+                if(_pushToServer)
+                {
+                    ret = av_interleaved_write_frame(out_fmt_ctx,packet);
+                    if (ret < 0)
+                    {
+                        printf( "Error muxing packet\n");
+                        return;
+                    }
+                }
+                av_packet_free(&pack);
+                audio_frame_index ++;
+            }
+            [_audioPacketArray removeAllObjects];
+            [_audioLock unlock];
         }
     }
     
