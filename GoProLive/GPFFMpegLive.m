@@ -61,21 +61,9 @@ typedef struct {
 - (void)getMicAACSound:(NSNotification *)notice
 {
     if(!notice.object)return;
-    
-    NSData *encodedData = notice.object;
     [_audioLock lock];
-    [_audioPacketArray addObject:encodedData];
+    [_audioPacketArray addObject:notice.object];
     [_audioLock unlock];
-    
-    
-//    static int i = 0;
-//    AVPacket * packet = NULL;
-//    if(_liveInfo.out_fmt_ctx)
-//    {
-//        packet = [GPFFMpegTool encodeToAAC:(__bridge CMSampleBufferRef)(notice.object) context:_liveInfo.out_fmt_ctx frameIndex:i++];
-//        if(packet)
-//            [_audioPacketArray addObject:CFBridgingRelease(packet)];
-//    }
 }
 
 - (void)pushGoProPreview:(NSString *)serverUrl
@@ -140,7 +128,6 @@ typedef struct {
     //frame handle
     int64_t start_time = av_gettime();
     int video_frame_index = 0;
-    int audio_frame_index = 0;
     while (![_pushThread isCancelled])
     {
         AVPacket *packet = av_packet_alloc();
@@ -166,7 +153,7 @@ typedef struct {
                 //flash
                 if(decode_frame->pict_type != AV_PICTURE_TYPE_NONE)
                 {
-                    UIImage * image = [GPFFMpegTool converFrameToImage:decode_frame pixFormat:h264decoder_ctx->pix_fmt];
+                    UIImage *image = [GPFFMpegTool converPixelToImage:[GPFFMpegTool converFrameToPixel:decode_frame]];
                     if (image)
                         dispatch_async(dispatch_get_main_queue(), ^{
                             [[NSNotificationCenter defaultCenter] postNotificationName:@"reflash" object:image];
@@ -191,7 +178,6 @@ typedef struct {
         //aac audio
         else
         {
-            reset_audio_packet_pts_dts(in_fmt_ctx, out_fmt_ctx, packet);
             if(_pushToServer)
             {
                 ret = av_interleaved_write_frame(out_fmt_ctx,packet);
@@ -207,24 +193,23 @@ typedef struct {
         if(_audioPacketArray.count)
         {
             [_audioLock lock];
-            for(NSData *encodedData in _audioPacketArray)
+            for(int i = 0;i < _audioPacketArray.count;i++)
             {
-                uint8_t *data = malloc(encodedData.length);
-                memcpy(data, [encodedData bytes], encodedData.length);
-                AVPacket *pack = av_packet_alloc();
-                av_packet_from_data(pack, data, (int)encodedData.length);
-                reset_audio_packet_pts_dts(_liveInfo.in_fmt_ctx, _liveInfo.out_fmt_ctx, pack);
-                if(_pushToServer)
+                CMSampleBufferRef buffer = (__bridge CMSampleBufferRef)([_audioPacketArray objectAtIndex:i]);
+                AVPacket *pack = [GPFFMpegTool encodeToAAC:buffer context:_liveInfo.out_fmt_ctx];
+                if(pack)
                 {
-                    ret = av_interleaved_write_frame(out_fmt_ctx,packet);
-                    if (ret < 0)
+                    if(_pushToServer)
                     {
-                        printf( "Error muxing packet\n");
-                        return;
+                        ret = av_interleaved_write_frame(_liveInfo.out_fmt_ctx,pack);
+                        if (ret < 0)
+                        {
+                            printf( "Error muxing packet\n");
+                            break;
+                        }
                     }
+                    av_packet_free(&pack);
                 }
-                av_packet_free(&pack);
-                audio_frame_index ++;
             }
             [_audioPacketArray removeAllObjects];
             [_audioLock unlock];

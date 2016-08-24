@@ -7,7 +7,6 @@
 //
 
 #import "GPFFMpegTool.h"
-@import VideoToolbox;
 @implementation GPFFMpegTool
 
 #pragma mark--------------------------ffmpeg setting--------------------------------------
@@ -202,7 +201,9 @@ int open_input_video_decoder(AVCodecContext **codec_ctx,AVFormatContext *in_fmt_
     return video_index;
 }
 
+
 #pragma mark -------------------add aac audio stream----------------------------------
+AVCodecContext *open_aac_audio_codec_ctx;
 int add_aac_phone_audio_stream(AVFormatContext **fmt_ctx)
 {
     AVCodec *encoder = avcodec_find_encoder(AV_CODEC_ID_AAC);
@@ -223,7 +224,7 @@ int add_aac_phone_audio_stream(AVFormatContext **fmt_ctx)
         case AVMEDIA_TYPE_AUDIO:
             codec_ctx->codec_id     = AV_CODEC_ID_AAC;
             codec_ctx->codec_type   = AVMEDIA_TYPE_AUDIO;
-            codec_ctx->sample_fmt   = AV_SAMPLE_FMT_S16;
+            codec_ctx->sample_fmt   = AV_SAMPLE_FMT_FLTP;
             codec_ctx->bit_rate     = 128000;
             codec_ctx->sample_rate  = 44100;
             codec_ctx->profile      = FF_PROFILE_AAC_LOW;
@@ -243,6 +244,7 @@ int add_aac_phone_audio_stream(AVFormatContext **fmt_ctx)
            printf("Couldn't open codec.\n");
            return ret;
     };
+    open_aac_audio_codec_ctx = codec_ctx;
     return ret;
 }
 
@@ -284,19 +286,6 @@ void reset_video_packet_pts_dts(AVFormatContext *in_fmt_ctx,AVFormatContext *out
     packet->duration = av_rescale_q(packet->duration, in_stream->time_base, out_stream->time_base);
     packet->pos = -1;
 }
-
-void reset_audio_packet_pts_dts (AVFormatContext *in_fmt_ctx,AVFormatContext *out_fmt_ctx, AVPacket *packet)
-{
-    AVStream *in_stream = in_fmt_ctx->streams[packet->stream_index];
-    AVStream *out_stream = out_fmt_ctx->streams[packet->stream_index];
-    
-    //convert PTS/DTS
-    packet->pts = av_rescale_q_rnd(packet->pts, in_stream->time_base, out_stream->time_base, (AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-    packet->dts = av_rescale_q_rnd(packet->dts, in_stream->time_base, out_stream->time_base, (AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
-    packet->duration = av_rescale_q(packet->duration, in_stream->time_base, out_stream->time_base);
-    packet->pos = -1;
-}
-
 #pragma mark ------------------------sync decode packet-----------------------------------------
 int decode_sync(AVCodecContext *codec_ctx, AVFrame *frame, int *got_frame, AVPacket *packet)
 {
@@ -420,6 +409,17 @@ int encode_async(AVCodecContext *avctx, AVFrame *frame, process_packet_cb cb, vo
     return pixelBuffer;
 }
 
++ (UIImage *)converPixelToImage:(CVPixelBufferRef)pixelBuffer
+{
+    UIImage *uiImage = nil;
+    CGImageRef giImageRef;
+    VTCreateCGImageFromCVPixelBuffer(pixelBuffer, NULL, &giImageRef);
+    uiImage = [UIImage imageWithCGImage:giImageRef];
+    CGImageRelease(giImageRef);
+    return uiImage;
+}
+
+
 + (UIImage*)converFrameToImage:(AVFrame *)avFrame pixFormat:(int)pixFormat
 {
     float width = avFrame->width;
@@ -489,7 +489,7 @@ int encode_async(AVCodecContext *avctx, AVFrame *frame, process_packet_cb cb, vo
     return image;
 }
 
-+ (AVPacket *)encodeToAAC:(CMSampleBufferRef)sampleBuffer context:(AVFormatContext*)contex frameIndex:(int)frameIndex
++ (AVPacket *)encodeToAAC:(CMSampleBufferRef)sampleBuffer context:(AVFormatContext*)contex
 {
     if(!sampleBuffer || contex == NULL)
         return NULL;
@@ -586,7 +586,7 @@ int encode_async(AVCodecContext *avctx, AVFrame *frame, process_packet_cb cb, vo
     frame->pts = pts * audio_stream->time_base.den;
     frame->pts = av_rescale_q(frame->pts, audio_stream->time_base, codec_ctx->time_base);
     
-    ret = encode_sync(codec_ctx, packet, &got_packet, frame);
+    ret = encode_sync(open_aac_audio_codec_ctx, packet, &got_packet, frame);
     if (ret < 0)
         printf("Error encoding audio frame: %s\n", av_err2str(ret));
     
