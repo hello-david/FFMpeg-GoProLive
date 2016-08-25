@@ -36,7 +36,9 @@
 {
     if(!notice) return;
     if(notice.object)
-        [_imageView setImage:(UIImage*)notice.object];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [_imageView setImage:(UIImage*)notice.object]; 
+        });
 }
 
 - (IBAction)hackGoProLiveStream:(id)sender {

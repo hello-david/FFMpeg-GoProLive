@@ -17,6 +17,7 @@
 		630475C61D62F42F008F4EFF /* libswresample.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 630475BE1D62F42F008F4EFF /* libswresample.a */; };
 		630475C71D62F42F008F4EFF /* libswscale.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 630475BF1D62F42F008F4EFF /* libswscale.a */; };
 		634261BC1D66B5DB00A0D17A /* GPFFMpegTool.m in Sources */ = {isa = PBXBuildFile; fileRef = 634261BB1D66B5DB00A0D17A /* GPFFMpegTool.m */; };
+		6352F93E1D6D6AD100B50294 /* VideoEncode.m in Sources */ = {isa = PBXBuildFile; fileRef = 6352F93D1D6D6AD100B50294 /* VideoEncode.m */; };
 		6362005A1D62B7F8001FF309 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 636200591D62B7F8001FF309 /* AudioToolbox.framework */; };
 		6362005D1D62BC7A001FF309 /* GPAudioLive.m in Sources */ = {isa = PBXBuildFile; fileRef = 6362005C1D62BC7A001FF309 /* GPAudioLive.m */; };
 		636495F51D49AC64005982C7 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 636494D71D4996E1005982C7 /* libz.tbd */; };
@@ -175,6 +176,8 @@
 		630475BF1D62F42F008F4EFF /* libswscale.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libswscale.a; sourceTree = "<group>"; };
 		634261BA1D66B5DB00A0D17A /* GPFFMpegTool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GPFFMpegTool.h; sourceTree = "<group>"; };
 		634261BB1D66B5DB00A0D17A /* GPFFMpegTool.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GPFFMpegTool.m; sourceTree = "<group>"; };
+		6352F93C1D6D6AD100B50294 /* VideoEncode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VideoEncode.h; sourceTree = "<group>"; };
+		6352F93D1D6D6AD100B50294 /* VideoEncode.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = VideoEncode.m; sourceTree = "<group>"; };
 		636200591D62B7F8001FF309 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		6362005B1D62BC7A001FF309 /* GPAudioLive.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GPAudioLive.h; sourceTree = "<group>"; };
 		6362005C1D62BC7A001FF309 /* GPAudioLive.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GPAudioLive.m; sourceTree = "<group>"; };
@@ -473,6 +476,8 @@
 		631861BD1D488E5100ECA619 /* Model */ = {
 			isa = PBXGroup;
 			children = (
+				6352F93C1D6D6AD100B50294 /* VideoEncode.h */,
+				6352F93D1D6D6AD100B50294 /* VideoEncode.m */,
 				63AF67F31D50433600FCB181 /* FRResourece */,
 				63AF68051D50A6D800FCB181 /* GPPreviewHack.h */,
 				63AF68061D50A6D800FCB181 /* GPPreviewHack.m */,
@@ -769,6 +774,7 @@
 				63AF67FB1D50433600FCB181 /* FRMBPregressHUD.m in Sources */,
 				637706EB1CF2FE36009A990F /* AppDelegate.m in Sources */,
 				637706E81CF2FE36009A990F /* main.m in Sources */,
+				6352F93E1D6D6AD100B50294 /* VideoEncode.m in Sources */,
 				634261BC1D66B5DB00A0D17A /* GPFFMpegTool.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
