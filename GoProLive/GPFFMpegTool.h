@@ -20,11 +20,15 @@
 @import AudioToolbox;
 @import CoreMedia;
 @import VideoToolbox;
-typedef struct{
-   
-    
-    
-}outPutStream;
+typedef struct {
+    AVFormatContext *inputFormat;
+    AVFormatContext *outputFormat;
+    AVCodecContext  *h264Decoder;
+    AVFrame    *frame;
+    AVPacket   *packet;
+    const char *inputFile;
+    const char *outputFile;
+}FFmpegLiveTool;
 
 void init_ffmpeg();
 int open_input_ctx              (AVFormatContext **ifmt_ctx, const char *in_filename);

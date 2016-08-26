@@ -10,12 +10,6 @@
 #import "FRHudManager.h"
 #import "GPFFMpegTool.h"
 
-typedef struct {
-    AVFormatContext *in_fmt_ctx;
-    AVCodecContext	*aac_encoder_ctx;
-    AVFormatContext *out_fmt_ctx;
-}FFMpegLiveInfo;
-
 @interface GPFFMpegLive()
 
 @property(atomic) NSMutableArray *audioPacketArray;
@@ -25,7 +19,7 @@ typedef struct {
 @implementation GPFFMpegLive
 {
     NSThread            *_pushThread;
-    FFMpegLiveInfo      _liveInfo;
+    FFmpegLiveTool      _liveStream;
     NSLock              *_audioLock;
 }
 
@@ -98,17 +92,13 @@ typedef struct {
         [[FRHudManager defaultManager] showLoadingWithText:@"Waiting For Live Stream"];
     });
     
-    AVFormatContext *in_fmt_ctx = NULL;
-    AVCodecContext	*h264decoder_ctx = NULL;
-    AVFormatContext *out_fmt_ctx = NULL;
-    
 //    if((ret = open_input_ctx_mpegts(&in_fmt_ctx,in_filename)) < 0)
 //        goto end;
-    if((ret = open_input_ctx(&in_fmt_ctx,in_filename)) < 0)
+    if((ret = open_input_ctx(&_liveStream.inputFormat,in_filename)) < 0)
         goto end;
     
     //output setting
-    if((ret = open_output_ctx_rtmp(&out_fmt_ctx,in_fmt_ctx,out_filename,YES) < 0))
+    if((ret = open_output_ctx_rtmp(&_liveStream.outputFormat,_liveStream.inputFormat,out_filename,YES) < 0))
        goto end;
     
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -119,11 +109,8 @@ typedef struct {
     
     //open an decoder
     int in_stream_video_index = -1;
-    if((in_stream_video_index = open_input_video_decoder(&h264decoder_ctx, in_fmt_ctx)) < 0)
+    if((in_stream_video_index = open_input_video_decoder(&_liveStream.h264Decoder, _liveStream.inputFormat)) < 0)
         goto end;
-    
-    _liveInfo.in_fmt_ctx = in_fmt_ctx;
-    _liveInfo.out_fmt_ctx = out_fmt_ctx;
     
     //frame handle
     int64_t start_time = av_gettime();
@@ -132,22 +119,22 @@ typedef struct {
     {
         AVPacket *packet = av_packet_alloc();
         //get an AVPacket
-        ret = av_read_frame(in_fmt_ctx, packet);
+        ret = av_read_frame(_liveStream.inputFormat, packet);
         if (ret < 0)break;
         
         //h264 video
         if(packet->stream_index == in_stream_video_index)
         {
             printf("frame= %d size= %dKB\n",video_frame_index ,packet->size);
-            reset_video_packet_pts_dts(in_fmt_ctx, out_fmt_ctx, packet,video_frame_index, start_time);
+            reset_video_packet_pts_dts(_liveStream.inputFormat, _liveStream.outputFormat, packet,video_frame_index, start_time);
             video_frame_index++;
             
             //decode
             AVFrame	*decode_frame = av_frame_alloc();
-            if(packet->stream_index == in_stream_video_index && h264decoder_ctx)
+            if(packet->stream_index == in_stream_video_index && _liveStream.h264Decoder)
             {
                 int got_frame = 0;
-                ret = decode_sync(h264decoder_ctx, decode_frame, &got_frame, packet);
+                ret = decode_sync(_liveStream.h264Decoder, decode_frame, &got_frame, packet);
                 if(ret < 0 )break;
                 
                 //flash
@@ -165,7 +152,7 @@ typedef struct {
             //push to server
             if(_pushToServer)
             {
-                ret = av_interleaved_write_frame(out_fmt_ctx,packet);
+                ret = av_interleaved_write_frame(_liveStream.outputFormat,packet);
                 if (ret < 0)
                 {
                     printf( "Error muxing packet\n");
@@ -180,7 +167,7 @@ typedef struct {
         {
             if(_pushToServer)
             {
-                ret = av_interleaved_write_frame(out_fmt_ctx,packet);
+                ret = av_interleaved_write_frame(_liveStream.outputFormat,packet);
                 if (ret < 0)
                 {
                     printf( "Error muxing packet\n");
@@ -190,54 +177,54 @@ typedef struct {
             av_packet_free(&packet);
         }
         
-        if(_audioPacketArray.count)
-        {
-            [_audioLock lock];
-            for(int i = 0;i < _audioPacketArray.count;i++)
-            {
-                CMSampleBufferRef buffer = (__bridge CMSampleBufferRef)([_audioPacketArray objectAtIndex:i]);
-                AVPacket *pack = [GPFFMpegTool encodeToAAC:buffer context:_liveInfo.out_fmt_ctx];
-                if(pack)
-                {
-                    if(_pushToServer)
-                    {
-                        ret = av_interleaved_write_frame(_liveInfo.out_fmt_ctx,pack);
-                        if (ret < 0)
-                        {
-                            printf( "Error muxing packet\n");
-                            break;
-                        }
-                    }
-                    av_packet_free(&pack);
-                }
-            }
-            [_audioPacketArray removeAllObjects];
-            [_audioLock unlock];
-        }
+//        if(_audioPacketArray.count)
+//        {
+//            [_audioLock lock];
+//            for(int i = 0;i < _audioPacketArray.count;i++)
+//            {
+//                CMSampleBufferRef buffer = (__bridge CMSampleBufferRef)([_audioPacketArray objectAtIndex:i]);
+//                AVPacket *pack = [GPFFMpegTool encodeToAAC:buffer context:_liveStream.outputFormat];
+//                if(pack)
+//                {
+//                    if(_pushToServer)
+//                    {
+//                        ret = av_interleaved_write_frame(_liveStream.outputFormat,pack);
+//                        if (ret < 0)
+//                        {
+//                            printf( "Error muxing packet\n");
+//                            break;
+//                        }
+//                    }
+//                    av_packet_free(&pack);
+//                }
+//            }
+//            [_audioPacketArray removeAllObjects];
+//            [_audioLock unlock];
+//        }
     }
     
     //norml end write file trailer
-    av_write_trailer(out_fmt_ctx);
+    av_write_trailer(_liveStream.outputFormat);
     
 end:
-    if(h264decoder_ctx)
+    if(_liveStream.h264Decoder)
     {
-        avcodec_close(h264decoder_ctx);
+        avcodec_close(_liveStream.h264Decoder);
     }
     
-    if(in_fmt_ctx)
+    if(_liveStream.inputFormat)
     {
-        if(in_fmt_ctx->iformat && !(in_fmt_ctx->iformat) & AVFMT_NOFILE)
-            avio_close(in_fmt_ctx->pb);
-        avformat_close_input(&in_fmt_ctx);
-        avformat_free_context(in_fmt_ctx);
+        if(_liveStream.inputFormat->iformat && !(_liveStream.inputFormat->iformat) & AVFMT_NOFILE)
+            avio_close(_liveStream.inputFormat->pb);
+        avformat_close_input(&_liveStream.inputFormat);
+        avformat_free_context(_liveStream.inputFormat);
     }
     
-    if(out_fmt_ctx)
+    if(_liveStream.outputFormat)
     {
-        if (out_fmt_ctx && !(out_fmt_ctx->oformat->flags & AVFMT_NOFILE))
-            avio_close(out_fmt_ctx->pb);
-        avformat_free_context(out_fmt_ctx);
+        if (_liveStream.outputFormat && !(_liveStream.outputFormat->oformat->flags & AVFMT_NOFILE))
+            avio_close(_liveStream.outputFormat->pb);
+        avformat_free_context(_liveStream.outputFormat);
     }
     
     if (ret < 0 && ret != AVERROR_EOF)
