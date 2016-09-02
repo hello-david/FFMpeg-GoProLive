@@ -25,6 +25,7 @@
 		636495F71D49AC70005982C7 /* VideoToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 636494DF1D49971F005982C7 /* VideoToolbox.framework */; };
 		636495F81D49ACA1005982C7 /* libbz2.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 636494D91D4996EB005982C7 /* libbz2.tbd */; };
 		636495F91D49ACAA005982C7 /* libiconv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 636494DB1D4996F8005982C7 /* libiconv.tbd */; };
+		6372B1AD1D791A39002D5B74 /* resource.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 6372B1AC1D791A39002D5B74 /* resource.bundle */; };
 		637706E81CF2FE36009A990F /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 637706E71CF2FE36009A990F /* main.m */; };
 		637706EB1CF2FE36009A990F /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 637706EA1CF2FE36009A990F /* AppDelegate.m */; };
 		637706EE1CF2FE36009A990F /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 637706ED1CF2FE36009A990F /* ViewController.m */; };
@@ -33,7 +34,6 @@
 		637706F61CF2FE36009A990F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 637706F41CF2FE36009A990F /* LaunchScreen.storyboard */; };
 		637707011CF2FE36009A990F /* GoProLiveTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 637707001CF2FE36009A990F /* GoProLiveTests.m */; };
 		6377070C1CF2FE36009A990F /* GoProLiveUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = 6377070B1CF2FE36009A990F /* GoProLiveUITests.m */; };
-		63867AA41D542A63003CC033 /* resource.bundle in Resources */ = {isa = PBXBuildFile; fileRef = 63867AA31D542A63003CC033 /* resource.bundle */; };
 		63867AA71D543014003CC033 /* GPFFMpegLive.m in Sources */ = {isa = PBXBuildFile; fileRef = 63867AA61D543014003CC033 /* GPFFMpegLive.m */; };
 		63AF67FA1D50433600FCB181 /* FRHudManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 63AF67F61D50433600FCB181 /* FRHudManager.m */; };
 		63AF67FB1D50433600FCB181 /* FRMBPregressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = 63AF67F81D50433600FCB181 /* FRMBPregressHUD.m */; };
@@ -187,6 +187,7 @@
 		636494DD1D499719005982C7 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		636494DF1D49971F005982C7 /* VideoToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = VideoToolbox.framework; path = System/Library/Frameworks/VideoToolbox.framework; sourceTree = SDKROOT; };
 		636495FB1D49B130005982C7 /* PrefixHeader.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PrefixHeader.pch; sourceTree = "<group>"; };
+		6372B1AC1D791A39002D5B74 /* resource.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = resource.bundle; sourceTree = "<group>"; };
 		637706E31CF2FE36009A990F /* GoProLive.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GoProLive.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		637706E71CF2FE36009A990F /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		637706E91CF2FE36009A990F /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -203,7 +204,6 @@
 		637707071CF2FE36009A990F /* GoProLiveUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GoProLiveUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6377070B1CF2FE36009A990F /* GoProLiveUITests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GoProLiveUITests.m; sourceTree = "<group>"; };
 		6377070D1CF2FE36009A990F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		63867AA31D542A63003CC033 /* resource.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = resource.bundle; sourceTree = SOURCE_ROOT; };
 		63867AA51D543014003CC033 /* GPFFMpegLive.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GPFFMpegLive.h; sourceTree = "<group>"; };
 		63867AA61D543014003CC033 /* GPFFMpegLive.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GPFFMpegLive.m; sourceTree = "<group>"; };
 		63AF67F41D50433600FCB181 /* ColorMacro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ColorMacro.h; sourceTree = "<group>"; };
@@ -518,8 +518,8 @@
 		637706E51CF2FE36009A990F /* GoProLive */ = {
 			isa = PBXGroup;
 			children = (
+				6372B1AC1D791A39002D5B74 /* resource.bundle */,
 				630475441D62F42F008F4EFF /* FFmpeg-iOS */,
-				63867AA31D542A63003CC033 /* resource.bundle */,
 				631861BD1D488E5100ECA619 /* Model */,
 				637706EC1CF2FE36009A990F /* ViewController.h */,
 				637706ED1CF2FE36009A990F /* ViewController.m */,
@@ -692,7 +692,7 @@
 				637706F61CF2FE36009A990F /* LaunchScreen.storyboard in Resources */,
 				637706F31CF2FE36009A990F /* Assets.xcassets in Resources */,
 				637706F11CF2FE36009A990F /* Main.storyboard in Resources */,
-				63867AA41D542A63003CC033 /* resource.bundle in Resources */,
+				6372B1AD1D791A39002D5B74 /* resource.bundle in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

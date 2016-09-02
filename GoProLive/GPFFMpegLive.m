@@ -55,9 +55,8 @@
 - (void)getMicAACSound:(NSNotification *)notice
 {
     if(!notice.object)return;
-    [_audioLock lock];
-    [_audioPacketArray addObject:notice.object];
-    [_audioLock unlock];
+    CMSampleBufferRef buffer = (__bridge CMSampleBufferRef)(notice.object);
+//    AVPacket *packet = [GPFFMpegTool encodeToAAC:buffer context:_liveStream.outputFormat];
 }
 
 - (void)pushGoProPreview:(NSString *)serverUrl
@@ -70,10 +69,10 @@
     if(serverUrl)
         sprintf(out_filename,"%s",[serverUrl UTF8String]);
     else
-        sprintf(out_filename,"%s","rtmp://192.168.8.21:1935/live/ffmpegTest");
+        sprintf(out_filename,"%s","rtmp://52.68.136.211:1935/live/ffmpegTest");
     
     char input_str_full[500]={0};
-    NSString *input_str= [NSString stringWithFormat:@"resource.bundle/%@",@"war3end.mp4"];
+    NSString *input_str= [NSString stringWithFormat:@"resource.bundle/%@",@"war3.mp4"];
     NSString *input_nsstr=[[[NSBundle mainBundle]resourcePath] stringByAppendingPathComponent:input_str];
     sprintf(input_str_full,"%s",[input_nsstr UTF8String]);
     strcpy(in_filename,input_str_full);
@@ -111,6 +110,8 @@
     int in_stream_video_index = -1;
     if((in_stream_video_index = open_input_video_decoder(&_liveStream.h264Decoder, _liveStream.inputFormat)) < 0)
         goto end;
+   if( (ret = open_aac_audio_decoder(&_liveStream.aacDecoder)) <0)
+       goto end;
     
     //frame handle
     int64_t start_time = av_gettime();
@@ -125,13 +126,9 @@
         //h264 video
         if(packet->stream_index == in_stream_video_index)
         {
-            printf("frame= %d size= %dKB\n",video_frame_index ,packet->size);
-            reset_video_packet_pts_dts(_liveStream.inputFormat, _liveStream.outputFormat, packet,video_frame_index, start_time);
-            video_frame_index++;
-            
             //decode
             AVFrame	*decode_frame = av_frame_alloc();
-            if(packet->stream_index == in_stream_video_index && _liveStream.h264Decoder)
+            if(_liveStream.h264Decoder)
             {
                 int got_frame = 0;
                 ret = decode_sync(_liveStream.h264Decoder, decode_frame, &got_frame, packet);
@@ -148,6 +145,10 @@
                 }
             }
             av_frame_free(&decode_frame);
+            
+            printf("frame= %d size= %dKB\n",video_frame_index ,packet->size);
+            reset_video_packet_pts(_liveStream.inputFormat, _liveStream.outputFormat, packet,video_frame_index, start_time);
+            video_frame_index++;
             
             //push to server
             if(_pushToServer)
@@ -176,31 +177,6 @@
             }
             av_packet_free(&packet);
         }
-        
-//        if(_audioPacketArray.count)
-//        {
-//            [_audioLock lock];
-//            for(int i = 0;i < _audioPacketArray.count;i++)
-//            {
-//                CMSampleBufferRef buffer = (__bridge CMSampleBufferRef)([_audioPacketArray objectAtIndex:i]);
-//                AVPacket *pack = [GPFFMpegTool encodeToAAC:buffer context:_liveStream.outputFormat];
-//                if(pack)
-//                {
-//                    if(_pushToServer)
-//                    {
-//                        ret = av_interleaved_write_frame(_liveStream.outputFormat,pack);
-//                        if (ret < 0)
-//                        {
-//                            printf( "Error muxing packet\n");
-//                            break;
-//                        }
-//                    }
-//                    av_packet_free(&pack);
-//                }
-//            }
-//            [_audioPacketArray removeAllObjects];
-//            [_audioLock unlock];
-//        }
     }
     
     //norml end write file trailer
@@ -214,16 +190,14 @@ end:
     
     if(_liveStream.inputFormat)
     {
-        if(_liveStream.inputFormat->iformat && !(_liveStream.inputFormat->iformat) & AVFMT_NOFILE)
+        if(!(_liveStream.inputFormat->iformat->flags & AVFMT_NOFILE))
             avio_close(_liveStream.inputFormat->pb);
-        avformat_close_input(&_liveStream.inputFormat);
+        else avformat_close_input(&(_liveStream.inputFormat));
         avformat_free_context(_liveStream.inputFormat);
     }
     
     if(_liveStream.outputFormat)
     {
-        if (_liveStream.outputFormat && !(_liveStream.outputFormat->oformat->flags & AVFMT_NOFILE))
-            avio_close(_liveStream.outputFormat->pb);
         avformat_free_context(_liveStream.outputFormat);
     }
     

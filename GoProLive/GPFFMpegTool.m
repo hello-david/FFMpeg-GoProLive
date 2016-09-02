@@ -200,6 +200,26 @@ int open_input_video_decoder(AVCodecContext **codec_ctx,AVFormatContext *in_fmt_
     
     return video_index;
 }
+int open_aac_audio_decoder(AVCodecContext **codec_ctx)
+{
+    int ret = 0;
+    AVCodec *decoder = avcodec_find_decoder(AV_CODEC_ID_AAC);
+    if(decoder == NULL){
+        printf("Couldn't find Codec.\n");
+        return -1;
+    }
+    *codec_ctx = avcodec_alloc_context3(decoder);
+    (*codec_ctx) ->channels = 1;
+    (*codec_ctx) ->sample_rate = 44100;
+    
+    if((ret = avcodec_open2((*codec_ctx), decoder,NULL) )<0)
+    {
+        printf("Couldn't open codec.\n");
+        return ret;
+    }
+    
+    return ret;
+}
 
 
 #pragma mark -------------------add aac audio stream----------------------------------
@@ -249,7 +269,7 @@ int add_aac_phone_audio_stream(AVFormatContext **fmt_ctx)
 }
 
 #pragma mark ---------------------H264 Packet dts pts setting-----------------------------------------
-void reset_video_packet_pts_dts(AVFormatContext *in_fmt_ctx,AVFormatContext *out_fmt_ctx, AVPacket *packet,int frame_index,int64_t start_time)
+void reset_video_packet_pts(AVFormatContext *in_fmt_ctx,AVFormatContext *out_fmt_ctx, AVPacket *packet,int frame_index,int64_t start_time)
 {
     int stream_video_index = 0;
     for (int i = 0; i < in_fmt_ctx->nb_streams; i++)
@@ -262,23 +282,37 @@ void reset_video_packet_pts_dts(AVFormatContext *in_fmt_ctx,AVFormatContext *out
             break;
         }
     }
-    //recalculate pts and dts
-    AVRational time_base1 = in_fmt_ctx->streams[stream_video_index]->time_base;
-    int64_t calc_duration = (double)AV_TIME_BASE / av_q2d(in_fmt_ctx->streams[stream_video_index]->r_frame_rate);
-    packet->pts = (double)(frame_index * calc_duration) / (double)(av_q2d(time_base1) * AV_TIME_BASE);
+    
+    AVStream *in_stream = in_fmt_ctx->streams[stream_video_index];
+    AVStream *out_stream = out_fmt_ctx->streams[packet->stream_index];
+    AVRational in_time_base = in_stream->time_base;
+    
+    /** 
+     *  video pts概念及计算公式
+     *
+     *  fps:单位时间刷新的帧数
+     *
+     *  time_base:时间基准刻度,1/time_base表示基准时间(s)
+     *
+     *  duration:单帧刷新所需时间 = (1/fps) * (1/time_base)
+     *
+     *  video_pts:当前这个帧所需要显示的时机 =  index * duration
+     */
+    
+    //recalculate input stream pts and dts
+    int fps = av_q2d(in_stream->r_frame_rate);
+    double time_base = av_q2d(in_time_base);
+    double duration = (double)(1.0/fps) * (double)(1.0/time_base);
+    packet->pts = (double)(frame_index * duration);
     packet->dts = packet->pts;
-    packet->duration = (double)calc_duration / (double)(av_q2d(time_base1) * AV_TIME_BASE);
+    packet->duration = duration;
     
     //delay pts time
-    AVRational time_base = in_fmt_ctx->streams[stream_video_index]->time_base;
     AVRational time_base_q = {1,AV_TIME_BASE};
-    int64_t pts_time = av_rescale_q(packet->dts, time_base, time_base_q);
+    int64_t pts_time = av_rescale_q(packet->pts, in_time_base, time_base_q);
     int64_t now_time = av_gettime() - start_time;
     if (pts_time > now_time)
         av_usleep((int)(pts_time - now_time));
-    
-    AVStream *in_stream = in_fmt_ctx->streams[packet->stream_index];
-    AVStream *out_stream = out_fmt_ctx->streams[packet->stream_index];
     
     //convert PTS/DTS
     packet->pts = av_rescale_q_rnd(packet->pts, in_stream->time_base, out_stream->time_base, (AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX));
@@ -376,6 +410,35 @@ int encode_async(AVCodecContext *avctx, AVFrame *frame, process_packet_cb cb, vo
     if (ret == AVERROR(EAGAIN))
         return 0;
     return ret;
+}
+
+void close_ffmpeg_live(FFmpegLiveTool *liveTool)
+{
+    if(liveTool->inputFormat)
+    {
+        if(!(liveTool->inputFormat->iformat->flags & AVFMT_NOFILE))
+            avio_close(liveTool->inputFormat->pb);
+        else avformat_close_input(&(liveTool->inputFormat));
+        avformat_free_context(liveTool->inputFormat);
+    }
+    
+    if(liveTool->h264Decoder)
+    {
+        avcodec_close(liveTool->h264Decoder);
+        liveTool->h264Decoder = NULL;
+    }
+    
+    if(liveTool->outputFormat)
+        avformat_free_context(liveTool->outputFormat);
+    
+    if(liveTool->packet)
+        av_packet_free(&liveTool->packet);
+    
+    if(liveTool->frame)
+        av_frame_free(&liveTool->frame);
+    
+    if(liveTool->swrCtx)
+        swr_free(&liveTool->swrCtx);
 }
 
 #pragma mark ------------------------trans frame to image----------------------------------------
@@ -489,9 +552,9 @@ int encode_async(AVCodecContext *avctx, AVFrame *frame, process_packet_cb cb, vo
     return image;
 }
 
-+ (AVPacket *)encodeToAAC:(CMSampleBufferRef)sampleBuffer context:(AVFormatContext*)contex
++ (AVPacket *)encodeToAAC:(CMSampleBufferRef)sampleBuffer context:(AVFormatContext*)outputContex
 {
-    if(!sampleBuffer || contex == NULL)
+    if(!sampleBuffer || outputContex == NULL)
         return NULL;
     
     //get audio original data
@@ -510,31 +573,16 @@ int encode_async(AVCodecContext *avctx, AVFrame *frame, process_packet_cb cb, vo
     int ret;
     AVStream *audio_stream = NULL;
     AVCodecContext  *codec_ctx = NULL;
-    for (int i = 0; i < contex->nb_streams; i++)
+    for (int i = 0; i < outputContex->nb_streams; i++)
     {
-        AVStream *stream        = contex->streams[i];
-        AVCodecParameters *para = stream->codecpar;
-        if(para->codec_type == AVMEDIA_TYPE_AUDIO)
+        if(outputContex->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO)
         {
-            audio_stream = stream;
+            audio_stream = outputContex->streams[i];
             break;
         }
     }
-    
-    for(int i = 0; i<contex->nb_streams; i++)
-    {
-        AVStream *stream    = contex->streams[i];
-        AVCodec *codec      = avcodec_find_decoder(stream->codecpar->codec_id);
-        AVCodecContext *ctx = avcodec_alloc_context3(codec);
-        avcodec_parameters_to_context(ctx, stream->codecpar);
-        if(ctx->codec_type == AVMEDIA_TYPE_AUDIO)
-        {
-            codec_ctx = ctx;
-            break;
-        }
-        avcodec_free_context(&ctx);
-    }
-    
+    codec_ctx = avcodec_alloc_context3(avcodec_find_decoder(audio_stream->codecpar->codec_id));
+    avcodec_parameters_to_context(codec_ctx, audio_stream->codecpar);
     if(!audio_stream || !codec_ctx)
         return NULL;
 
@@ -579,12 +627,21 @@ int encode_async(AVCodecContext *avctx, AVFrame *frame, process_packet_cb cb, vo
     frame->channels        =  codec_ctx->channels;
     frame->sample_rate     =  codec_ctx->sample_rate;
     
+    /**
+     *  audio pts概念及计算公式
+     */
+    
     double  pts = 0;
     int got_packet;
     if (timing_info.presentationTimeStamp.timescale != 0)
-        pts = (double) timing_info.presentationTimeStamp.value / timing_info.presentationTimeStamp.timescale;
-    frame->pts = pts * audio_stream->time_base.den;
-    frame->pts = av_rescale_q(frame->pts, audio_stream->time_base, codec_ctx->time_base);
+        pts = (double) timing_info.presentationTimeStamp.value / (double)timing_info.presentationTimeStamp.timescale;
+    
+    static int frame_index = 0;
+    double sample_rate = (double)timing_info.duration.value / (double)timing_info.duration.timescale;
+    double time_base = (double) timing_info.presentationTimeStamp.value / (double)timing_info.presentationTimeStamp.timescale;
+    double duration = sample_rate * time_base;
+    frame->pts = duration * frame_index;
+    frame_index ++;
     
     ret = encode_sync(open_aac_audio_codec_ctx, packet, &got_packet, frame);
     if (ret < 0)
