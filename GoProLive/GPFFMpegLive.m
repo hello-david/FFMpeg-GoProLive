@@ -19,7 +19,7 @@
 @implementation GPFFMpegLive
 {
     NSThread            *_pushThread;
-    FFmpegLiveTool      _liveStream;
+    FFMpegLiveTool      _liveStream;
     NSLock              *_audioLock;
 }
 

@@ -412,7 +412,7 @@ int encode_async(AVCodecContext *avctx, AVFrame *frame, process_packet_cb cb, vo
     return ret;
 }
 
-void close_ffmpeg_live(FFmpegLiveTool *liveTool)
+void close_ffmpeg_live(FFMpegLiveTool *liveTool)
 {
     if(liveTool->inputFormat)
     {

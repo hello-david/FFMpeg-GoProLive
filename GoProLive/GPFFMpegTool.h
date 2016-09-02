@@ -30,7 +30,7 @@ typedef struct {
     SwrContext *swrCtx;
     const char *inputFile;
     const char *outputFile;
-}FFmpegLiveTool;
+}FFMpegLiveTool;
 
 void init_ffmpeg();
 int open_input_ctx              (AVFormatContext **ifmt_ctx, const char *in_filename);
@@ -42,7 +42,7 @@ void reset_video_packet_pts     (AVFormatContext *in_fmt_ctx,   AVFormatContext 
 int decode_sync (AVCodecContext  *codec_ctx, AVFrame *frame,    int *got_frame,  AVPacket *packet);
 int encode_sync (AVCodecContext  *codec_ctx, AVPacket *packet,  int *got_packet, AVFrame *frame);
 int push_output                (AVFormatContext *out_fmt_ctx,AVPacket *packet);
-void close_ffmpeg_live          (FFmpegLiveTool *liveTool);
+void close_ffmpeg_live          (FFMpegLiveTool *liveTool);
 
 @interface GPFFMpegTool : NSObject
 
