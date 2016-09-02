@@ -10,12 +10,6 @@
 #import "FRHudManager.h"
 #import "GPFFMpegTool.h"
 
-@interface GPFFMpegLive()
-
-@property(atomic) NSMutableArray *audioPacketArray;
-
-@end
-
 @implementation GPFFMpegLive
 {
     NSThread            *_pushThread;
@@ -26,10 +20,7 @@
 - (instancetype)init
 {
     if(self = [super init]){
-        [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(getMicAACSound:) name:@"aacAudio" object:nil];
         _pushToServer = YES;
-        _audioPacketArray = [[NSMutableArray alloc]init];
-        _audioLock = [[NSLock alloc]init];
     }
     return self;
 }
@@ -52,25 +43,20 @@
     }
 }
 
-- (void)getMicAACSound:(NSNotification *)notice
-{
-    if(!notice.object)return;
-    CMSampleBufferRef buffer = (__bridge CMSampleBufferRef)(notice.object);
-//    AVPacket *packet = [GPFFMpegTool encodeToAAC:buffer context:_liveStream.outputFormat];
-}
-
 - (void)pushGoProPreview:(NSString *)serverUrl
 {
     char out_filename[500] = {0};
-    char in_filename[500]={0};
+    char in_filename[500] = {0};
     int ret;
     
+    //defalut use go pro input output
     sprintf(in_filename,"%s", "udp://10.5.5.9:8554");
     if(serverUrl)
         sprintf(out_filename,"%s",[serverUrl UTF8String]);
     else
         sprintf(out_filename,"%s","rtmp://52.68.136.211:1935/live/ffmpegTest");
     
+    //use local media
     char input_str_full[500]={0};
     NSString *input_str= [NSString stringWithFormat:@"resource.bundle/%@",@"war3.mp4"];
     NSString *input_nsstr=[[[NSBundle mainBundle]resourcePath] stringByAppendingPathComponent:input_str];
@@ -91,13 +77,14 @@
         [[FRHudManager defaultManager] showLoadingWithText:@"Waiting For Live Stream"];
     });
     
+// use go pro should use mpegts
 //    if((ret = open_input_ctx_mpegts(&in_fmt_ctx,in_filename)) < 0)
 //        goto end;
     if((ret = open_input_ctx(&_liveStream.inputFormat,in_filename)) < 0)
         goto end;
     
     //output setting
-    if((ret = open_output_ctx_rtmp(&_liveStream.outputFormat,_liveStream.inputFormat,out_filename,YES) < 0))
+    if((ret = open_output_ctx_rtmp(&_liveStream.outputFormat,_liveStream.inputFormat,out_filename) < 0))
        goto end;
     
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -110,8 +97,6 @@
     int in_stream_video_index = -1;
     if((in_stream_video_index = open_input_video_decoder(&_liveStream.h264Decoder, _liveStream.inputFormat)) < 0)
         goto end;
-   if( (ret = open_aac_audio_decoder(&_liveStream.aacDecoder)) <0)
-       goto end;
     
     //frame handle
     int64_t start_time = av_gettime();

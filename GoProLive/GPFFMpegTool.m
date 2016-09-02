@@ -94,7 +94,7 @@ int open_input_ctx_mpegts(AVFormatContext **ifmt_ctx,const char* in_filename)
     return 0;
 }
 
-int open_output_ctx_rtmp(AVFormatContext **out_fmt_ctx,AVFormatContext *ifmt_ctx,const char* out_filename,bool use_phone_mic)
+int open_output_ctx_rtmp(AVFormatContext **out_fmt_ctx,AVFormatContext *ifmt_ctx,const char* out_filename)
 {
     int ret = 0;
     
@@ -114,10 +114,7 @@ int open_output_ctx_rtmp(AVFormatContext **out_fmt_ctx,AVFormatContext *ifmt_ctx
         AVCodecParameters *para = in_stream->codecpar;
         
         bool input_media;
-        if(use_phone_mic)
-            (para->codec_type == AVMEDIA_TYPE_VIDEO) ? (input_media = YES):(input_media = NO);
-        else
-            ((para->codec_type == AVMEDIA_TYPE_VIDEO || para->codec_type == AVMEDIA_TYPE_AUDIO)) ? (input_media = YES):(input_media = NO);
+        ((para->codec_type == AVMEDIA_TYPE_VIDEO || para->codec_type == AVMEDIA_TYPE_AUDIO)) ? (input_media = YES):(input_media = NO);
         
         if(input_media && para->extradata_size > 0)
         {
@@ -137,9 +134,6 @@ int open_output_ctx_rtmp(AVFormatContext **out_fmt_ctx,AVFormatContext *ifmt_ctx
             out_stream->codecpar->codec_tag = 0;
         }
     }
-    
-    if(use_phone_mic)
-        add_aac_phone_audio_stream(out_fmt_ctx);
     
     av_dump_format(*out_fmt_ctx, 0, out_filename, 1);
     
@@ -199,73 +193,6 @@ int open_input_video_decoder(AVCodecContext **codec_ctx,AVFormatContext *in_fmt_
     }
     
     return video_index;
-}
-int open_aac_audio_decoder(AVCodecContext **codec_ctx)
-{
-    int ret = 0;
-    AVCodec *decoder = avcodec_find_decoder(AV_CODEC_ID_AAC);
-    if(decoder == NULL){
-        printf("Couldn't find Codec.\n");
-        return -1;
-    }
-    *codec_ctx = avcodec_alloc_context3(decoder);
-    (*codec_ctx) ->channels = 1;
-    (*codec_ctx) ->sample_rate = 44100;
-    
-    if((ret = avcodec_open2((*codec_ctx), decoder,NULL) )<0)
-    {
-        printf("Couldn't open codec.\n");
-        return ret;
-    }
-    
-    return ret;
-}
-
-
-#pragma mark -------------------add aac audio stream----------------------------------
-AVCodecContext *open_aac_audio_codec_ctx;
-int add_aac_phone_audio_stream(AVFormatContext **fmt_ctx)
-{
-    AVCodec *encoder = avcodec_find_encoder(AV_CODEC_ID_AAC);
-    if (!encoder){
-        printf("Could not find encoder for '%s'\n",avcodec_get_name(AV_CODEC_ID_AAC));
-    }
-    
-    AVStream *stream = avformat_new_stream(*fmt_ctx, encoder);
-    if (!stream){
-        printf("Could not allocate stream\n");
-    }
-    
-    stream->id = (*fmt_ctx)->nb_streams -1;
-    AVCodecContext *codec_ctx = avcodec_alloc_context3(encoder);
-    avcodec_parameters_to_context(codec_ctx, stream->codecpar);
-    switch (encoder->type)
-    {
-        case AVMEDIA_TYPE_AUDIO:
-            codec_ctx->codec_id     = AV_CODEC_ID_AAC;
-            codec_ctx->codec_type   = AVMEDIA_TYPE_AUDIO;
-            codec_ctx->sample_fmt   = AV_SAMPLE_FMT_FLTP;
-            codec_ctx->bit_rate     = 128000;
-            codec_ctx->sample_rate  = 44100;
-            codec_ctx->profile      = FF_PROFILE_AAC_LOW;
-            codec_ctx->channel_layout = AV_CH_LAYOUT_MONO;
-            codec_ctx->channels     = av_get_channel_layout_nb_channels(codec_ctx->channel_layout);
-            stream->time_base       = (AVRational){ 1,codec_ctx->sample_rate};
-            stream->codecpar->codec_tag = 0;
-            break;
-        default:
-            break;
-    }
-    avcodec_parameters_from_context(stream->codecpar, codec_ctx);
-    
-    int ret = 0;
-    if((ret = avcodec_open2(codec_ctx, encoder, NULL))<0)
-    {
-           printf("Couldn't open codec.\n");
-           return ret;
-    };
-    open_aac_audio_codec_ctx = codec_ctx;
-    return ret;
 }
 
 #pragma mark ---------------------H264 Packet dts pts setting-----------------------------------------
@@ -550,114 +477,6 @@ void close_ffmpeg_live(FFMpegLiveTool *liveTool)
     av_frame_free(&rgbPicture);
     
     return image;
-}
-
-+ (AVPacket *)encodeToAAC:(CMSampleBufferRef)sampleBuffer context:(AVFormatContext*)outputContex
-{
-    if(!sampleBuffer || outputContex == NULL)
-        return NULL;
-    
-    //get audio original data
-    NSUInteger channelIndex = 0;
-    CMSampleTimingInfo timing_info;
-    CMSampleBufferGetSampleTimingInfo(sampleBuffer, 0, &timing_info);
-    CMItemCount numSamples = CMSampleBufferGetNumSamples(sampleBuffer);
-    CMBlockBufferRef audioBlockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer);
-    size_t audioBlockBufferOffset = (channelIndex * numSamples * sizeof(SInt16));
-    size_t lengthAtOffset = 0;
-    size_t totalLength = 0;
-    SInt16 *samples = NULL;
-    CMBlockBufferGetDataPointer(audioBlockBuffer, audioBlockBufferOffset, &lengthAtOffset, &totalLength, (char **)(&samples));
-    const AudioStreamBasicDescription *audioDescription = CMAudioFormatDescriptionGetStreamBasicDescription(CMSampleBufferGetFormatDescription(sampleBuffer));
-    
-    int ret;
-    AVStream *audio_stream = NULL;
-    AVCodecContext  *codec_ctx = NULL;
-    for (int i = 0; i < outputContex->nb_streams; i++)
-    {
-        if(outputContex->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_AUDIO)
-        {
-            audio_stream = outputContex->streams[i];
-            break;
-        }
-    }
-    codec_ctx = avcodec_alloc_context3(avcodec_find_decoder(audio_stream->codecpar->codec_id));
-    avcodec_parameters_to_context(codec_ctx, audio_stream->codecpar);
-    if(!audio_stream || !codec_ctx)
-        return NULL;
-
-    //resample original data
-    SwrContext *swr_ctx = swr_alloc();
-    av_opt_set_int(swr_ctx, "in_channel_layout",     AV_CH_LAYOUT_MONO,  0);
-    av_opt_set_int(swr_ctx, "in_channel_count",      audioDescription->mChannelsPerFrame,  0);
-    av_opt_set_int(swr_ctx, "in_sample_rate",        audioDescription->mSampleRate,0);
-    av_opt_set_sample_fmt(swr_ctx, "in_sample_fmt",  (audioDescription->mBitsPerChannel == 16)? AV_SAMPLE_FMT_S16 : AV_SAMPLE_FMT_NONE,  0);
-
-    av_opt_set_int(swr_ctx, "out_channel_layout",    codec_ctx->channel_layout, 0);
-    av_opt_set_int(swr_ctx, "out_channel_count",     codec_ctx->channels  ,  0);
-    av_opt_set_int(swr_ctx, "out_sample_rate",       codec_ctx->sample_rate, 0);
-    av_opt_set_sample_fmt(swr_ctx, "out_sample_fmt", codec_ctx->sample_fmt,  0);
-    swr_init(swr_ctx);
-    
-    uint8_t **input = NULL;
-    int src_linesize;
-    int in_samples = (int)numSamples;
-    ret     = av_samples_alloc_array_and_samples(&input, &src_linesize, audioDescription->mChannelsPerFrame, in_samples, AV_SAMPLE_FMT_S16, 0);
-    *input  = (uint8_t*)samples;
-    
-    uint8_t *output     = NULL;
-    int in_samplerate   = (int)audioDescription->mSampleRate;
-    int out_samples     = (int)av_rescale_rnd(swr_get_delay(swr_ctx, in_samplerate) + in_samples, codec_ctx->sample_rate, in_samplerate, AV_ROUND_UP);
-    av_samples_alloc(&output, NULL, codec_ctx->channels, out_samples, codec_ctx->sample_fmt, 0);
-    in_samples  = (int)numSamples;
-    out_samples = swr_convert(swr_ctx, &output, out_samples, (const uint8_t **)input, in_samples);
-    
-    //encode data to aac
-    AVFrame  *frame     = av_frame_alloc();
-    AVPacket *packet    = av_packet_alloc();
-    frame->nb_samples   = (int) out_samples;
-    ret = avcodec_fill_audio_frame(frame , codec_ctx->channels,
-                                   codec_ctx->sample_fmt, (uint8_t *)output,
-                                   (int)frame->nb_samples * av_get_bytes_per_sample(codec_ctx->sample_fmt) * codec_ctx->channels,
-                                   1);
-    if (ret < 0){
-        fprintf(stderr, "Error fill audio frame: %s\n", av_err2str(ret));
-    }
-    frame->channel_layout  =  codec_ctx->channel_layout;
-    frame->channels        =  codec_ctx->channels;
-    frame->sample_rate     =  codec_ctx->sample_rate;
-    
-    /**
-     *  audio pts概念及计算公式
-     */
-    
-    double  pts = 0;
-    int got_packet;
-    if (timing_info.presentationTimeStamp.timescale != 0)
-        pts = (double) timing_info.presentationTimeStamp.value / (double)timing_info.presentationTimeStamp.timescale;
-    
-    static int frame_index = 0;
-    double sample_rate = (double)timing_info.duration.value / (double)timing_info.duration.timescale;
-    double time_base = (double) timing_info.presentationTimeStamp.value / (double)timing_info.presentationTimeStamp.timescale;
-    double duration = sample_rate * time_base;
-    frame->pts = duration * frame_index;
-    frame_index ++;
-    
-    ret = encode_sync(open_aac_audio_codec_ctx, packet, &got_packet, frame);
-    if (ret < 0)
-        printf("Error encoding audio frame: %s\n", av_err2str(ret));
-    
-    av_frame_free(&frame);
-    swr_free(&swr_ctx);
-    
-    if (got_packet)
-    {
-        packet->stream_index = audio_stream->index;
-        packet->pts = av_rescale_q(packet->pts, codec_ctx->time_base, audio_stream->time_base);
-        packet->dts = av_rescale_q(packet->dts, codec_ctx->time_base, audio_stream->time_base);
-        return packet;
-    }
-    return NULL;
 }
 
 @end
