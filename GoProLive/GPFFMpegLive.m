@@ -79,13 +79,13 @@
     
 // use go pro should use mpegts
 //    if((ret = open_input_ctx_mpegts(&in_fmt_ctx,in_filename)) < 0)
-//        goto end;
+//         [self closeFFMpegLive:ret];
     if((ret = open_input_ctx(&_liveStream.inputFormat,in_filename)) < 0)
-        goto end;
+        [self closeFFMpegLive:ret];
     
     //output setting
     if((ret = open_output_ctx_rtmp(&_liveStream.outputFormat,_liveStream.inputFormat,out_filename) < 0))
-       goto end;
+        [self closeFFMpegLive:ret];
     
     dispatch_async(dispatch_get_main_queue(), ^{
         [[FRHudManager defaultManager] showText:@"Live Start" hideAfter:2];
@@ -96,7 +96,7 @@
     //open an decoder
     int in_stream_video_index = -1;
     if((in_stream_video_index = open_input_video_decoder(&_liveStream.h264Decoder, _liveStream.inputFormat)) < 0)
-        goto end;
+        [self closeFFMpegLive:ret];
     
     //frame handle
     int64_t start_time = av_gettime();
@@ -166,25 +166,12 @@
     
     //norml end write file trailer
     av_write_trailer(_liveStream.outputFormat);
-    
-end:
-    if(_liveStream.h264Decoder)
-    {
-        avcodec_close(_liveStream.h264Decoder);
-    }
-    
-    if(_liveStream.inputFormat)
-    {
-        if(!(_liveStream.inputFormat->iformat->flags & AVFMT_NOFILE))
-            avio_close(_liveStream.inputFormat->pb);
-        else avformat_close_input(&(_liveStream.inputFormat));
-        avformat_free_context(_liveStream.inputFormat);
-    }
-    
-    if(_liveStream.outputFormat)
-    {
-        avformat_free_context(_liveStream.outputFormat);
-    }
+    [self closeFFMpegLive:ret];
+}
+
+- (void)closeFFMpegLive:(int)ret
+{
+    close_ffmpeg_live(&(_liveStream));
     
     if (ret < 0 && ret != AVERROR_EOF)
     {
@@ -202,7 +189,6 @@ end:
             [[NSNotificationCenter defaultCenter]postNotificationName:kGoProHackStopAlvie object:nil];
         });
     }
-    
     else
     {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -211,7 +197,6 @@ end:
             NSLog(@"stop Keep Live Stream");
         });
     }
-    
-    [NSThread exit];
 }
+
 @end
