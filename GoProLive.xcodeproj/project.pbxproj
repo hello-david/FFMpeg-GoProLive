@@ -916,7 +916,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/GoProLive/FFmpeg-iOS/lib",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.UBNT.GoProLive;
+				PRODUCT_BUNDLE_IDENTIFIER = com.David.GoProLive;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -939,7 +939,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/GoProLive/FFmpeg-iOS/lib",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.UBNT.GoProLive;
+				PRODUCT_BUNDLE_IDENTIFIER = com.David.GoProLive;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
